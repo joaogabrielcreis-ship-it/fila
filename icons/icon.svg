@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9a5a"/>
+      <stop offset="0.55" stop-color="#f2622e"/>
+      <stop offset="1" stop-color="#c8361f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#7a1d0c" flood-opacity="0.35"/>
+    </filter>
+    <!-- play triangle with soft rounded corners -->
+    <path id="play" d="M0,-150 C0,-176 28,-192 51,-179 L292,-29 C314,-16 314,16 292,29 L51,179 C28,192 0,176 0,150 Z"/>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <!-- queue: episodes waiting behind the one playing -->
+  <use href="#play" transform="translate(256 512) scale(0.62)" fill="#fff" opacity="0.28"/>
+  <use href="#play" transform="translate(346 512) scale(0.8)" fill="#fff" opacity="0.5"/>
+  <use href="#play" transform="translate(460 512)" fill="#fff" filter="url(#sh)"/>
+</svg>
