@@ -4,92 +4,204 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fila">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Fila</title>
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{
-  --bg:#f6f6f4;--card:#fff;--ink:#16181d;--muted:#6b7079;--line:#e6e6e2;--accent:#e8602c;--accent-ink:#fff;
-  --chip:#efefeb;--ok:#2f8a4f;--warn:#b7791f;--bad:#c2410c;--ever:#4b5bd6;
+  --bg:#f2f2f7; --blob1:rgba(255,138,76,.22); --blob2:rgba(120,140,255,.14);
+  --ink:#0b0b0f; --ink2:#3c3c43; --muted:rgba(60,60,67,.62); --line:rgba(60,60,67,.14);
+  --card:rgba(255,255,255,.72); --card-solid:#fff;
+  --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.78);
+  --glass-edge:rgba(255,255,255,.75); --glass-shadow:0 10px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  --hi:inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(0,0,0,.04);
+  --fill:rgba(120,120,128,.12); --fill2:rgba(120,120,128,.2);
+  --accent:#f2622e; --accent-soft:rgba(242,98,46,.14); --on-accent:#fff;
+  --ok:#248a3d; --warn:#b25000; --bad:#d70015; --ever:#3634a3;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0f1115;--card:#181b21;--ink:#eceef2;--muted:#9097a3;--line:#262a32;--accent:#ff7a45;--accent-ink:#1a0d06;
-  --chip:#22262e;--ok:#5fcf87;--warn:#e8b14e;--bad:#ff8a5c;--ever:#8f9bff;
+  --bg:#000; --blob1:rgba(255,110,50,.22); --blob2:rgba(90,110,255,.18);
+  --ink:#f5f5f7; --ink2:#ebebf5; --muted:rgba(235,235,245,.6); --line:rgba(84,84,88,.5);
+  --card:rgba(28,28,30,.72); --card-solid:#1c1c1e;
+  --glass:rgba(40,40,44,.52); --glass-strong:rgba(44,44,48,.78);
+  --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 10px 40px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
+  --hi:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.2);
+  --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.36);
+  --accent:#ff7a45; --accent-soft:rgba(255,122,69,.18); --on-accent:#1a0a03;
+  --ok:#30d158; --warn:#ffb340; --bad:#ff6961; --ever:#a5a4ff;
 }}
 :root[data-theme="dark"]{
-  --bg:#0f1115;--card:#181b21;--ink:#eceef2;--muted:#9097a3;--line:#262a32;--accent:#ff7a45;--accent-ink:#1a0d06;
-  --chip:#22262e;--ok:#5fcf87;--warn:#e8b14e;--bad:#ff8a5c;--ever:#8f9bff;
+  --bg:#000; --blob1:rgba(255,110,50,.22); --blob2:rgba(90,110,255,.18);
+  --ink:#f5f5f7; --ink2:#ebebf5; --muted:rgba(235,235,245,.6); --line:rgba(84,84,88,.5);
+  --card:rgba(28,28,30,.72); --card-solid:#1c1c1e;
+  --glass:rgba(40,40,44,.52); --glass-strong:rgba(44,44,48,.78);
+  --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 10px 40px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
+  --hi:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.2);
+  --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.36);
+  --accent:#ff7a45; --accent-soft:rgba(255,122,69,.18); --on-accent:#1a0a03;
+  --ok:#30d158; --warn:#ffb340; --bad:#ff6961; --ever:#a5a4ff;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
-header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:calc(env(safe-area-inset-top) + 10px) 16px 8px;border-bottom:1px solid var(--line)}
-.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-h1{font-size:22px;margin:0;letter-spacing:-.02em}
-.sub{color:var(--muted);font-size:13px}
-main{padding:12px 16px calc(90px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
-nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:6;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
-nav.tabs button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:11px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
-nav.tabs button b{font-size:19px;font-weight:400;line-height:1}
-nav.tabs button.on{color:var(--accent)}
-.badge{background:var(--accent);color:var(--accent-ink);border-radius:9px;font-size:10px;padding:0 5px;margin-left:3px}
-.filters{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+html{background:var(--bg);min-height:100%}
+body{margin:0;min-height:100vh;color:var(--ink);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(60vmax 50vmax at 100% -10%, var(--blob1), transparent 60%),
+    radial-gradient(50vmax 50vmax at -10% 40%, var(--blob2), transparent 60%),
+    var(--bg);
+  background-attachment:fixed}
+button,select,input{font:inherit;color:inherit}
+svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- Liquid glass ---------- */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);
+  border:.5px solid var(--glass-edge);box-shadow:var(--hi),var(--glass-shadow)}
+
+/* ---------- Header ---------- */
+header{position:sticky;top:0;z-index:20;padding:calc(env(safe-area-inset-top) + 8px) 20px 10px;transition:background .25s,box-shadow .25s}
+header.scrolled{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);box-shadow:0 .5px 0 var(--line)}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;max-width:980px;margin:0 auto}
+h1{font-size:34px;line-height:1.1;font-weight:700;letter-spacing:.01em;margin:0;transition:font-size .2s}
+header.scrolled h1{font-size:22px}
+.sub{color:var(--muted);font-size:15px;margin-top:3px}
+header.scrolled .sub{display:none}
+.hbtns{display:flex;gap:8px;padding-bottom:2px}
+.round{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:0;cursor:pointer;color:var(--ink)}
+.round.accent{background:var(--accent);color:var(--on-accent);border:0;box-shadow:0 6px 18px rgba(242,98,46,.35),inset 0 1px 0 rgba(255,255,255,.35)}
+.round:active,.btn:active,.tabbar button:active{transform:scale(.94)}
+#filterbar{max-width:980px;margin:0 auto}
+
+/* ---------- Layout ---------- */
+main{padding:6px 16px calc(120px + env(safe-area-inset-bottom));max-width:980px;margin:0 auto}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+.section-title{font-size:20px;font-weight:700;margin:22px 4px 10px}
+
+/* ---------- Floating tab bar ---------- */
+.tabbar{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:max(14px, calc(env(safe-area-inset-bottom) - 6px));
+  width:min(calc(100% - 28px),460px);height:68px;border-radius:34px;display:flex;align-items:center;padding:6px;gap:2px}
+.tabbar button{flex:1;height:56px;border:0;background:none;border-radius:28px;color:var(--ink2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;position:relative;transition:color .2s,background .2s;cursor:pointer}
+.tabbar button svg.i{width:25px;height:25px}
+.tabbar button.on{color:var(--accent);background:var(--fill)}
+.tabbar .dot{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;display:grid;place-items:center}
+
+/* ---------- Filters ---------- */
+.filters{display:flex;gap:8px;overflow-x:auto;padding:10px 4px 2px;margin:0 -20px;padding-left:20px;padding-right:20px;scrollbar-width:none}
 .filters::-webkit-scrollbar{display:none}
-.chip{flex:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:6px 11px;font:inherit;font-size:13px;white-space:nowrap}
-.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-select.chip{appearance:none;-webkit-appearance:none;padding-right:22px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 12px) 55%,calc(100% - 8px) 55%;background-size:4px 4px;background-repeat:no-repeat}
-.row-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;display:grid;grid-template-columns:56px 1fr;gap:10px}
-.card img{width:56px;height:56px;border-radius:10px;object-fit:cover;background:var(--chip)}
-.show{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.title{font-weight:600;margin:1px 0 4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.meta{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:12px;color:var(--muted);align-items:center}
-.tag{border-radius:6px;padding:1px 6px;font-size:11px;font-weight:600;background:var(--chip)}
-.tag.fresh{color:var(--ok)}.tag.soon{color:var(--warn)}.tag.old{color:var(--bad)}.tag.ever{color:var(--ever)}
-.actions{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:10px;padding:7px 10px;font:inherit;font-size:13px}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
-.btn.ghost{background:none}
-.btn.on{outline:2px solid var(--accent);outline-offset:-2px}
-.empty{text-align:center;color:var(--muted);padding:40px 10px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13px;z-index:9;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none}
-.toast.show{opacity:1}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
-.panel h3{margin:0 0 4px;font-size:16px}
-input[type=text],input[type=url],input[type=password]{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
-.flex{display:flex;gap:8px;align-items:center}
-.feedurl{font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all;color:var(--muted);background:var(--bg);padding:8px;border-radius:8px;margin:6px 0}
-.li{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
-.li:first-of-type{border-top:0}
-.li .t{flex:1;min-width:0;font-size:13px}
-.li .t div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mini{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:30px;height:30px;font-size:14px}
-.stat{display:flex;gap:16px;font-size:13px;color:var(--muted);margin:4px 0 0}
-.stat b{color:var(--ink);font-size:17px;display:block}
-details summary{cursor:pointer;color:var(--muted);font-size:13px}
-.desc{font-size:13px;color:var(--muted);margin-top:6px;white-space:pre-line}
+.chip{flex:none;height:36px;border:.5px solid var(--glass-edge);background:var(--glass-strong);border-radius:18px;padding:0 14px;font-size:15px;font-weight:500;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer;box-shadow:var(--hi)}
+.chip.on{background:var(--accent);border-color:transparent;color:var(--on-accent);font-weight:600}
+select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+
+/* ---------- Cards ---------- */
+.card{background:var(--card);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:.5px solid var(--glass-edge);box-shadow:var(--hi),0 1px 3px rgba(0,0,0,.04);border-radius:24px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-top{display:grid;grid-template-columns:80px 1fr;gap:14px;align-items:start}
+.art{width:80px;height:80px;border-radius:16px;object-fit:cover;background:var(--fill);box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.show{font-size:13px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title{font-size:17px;font-weight:600;line-height:1.28;margin:3px 0 6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.meta{display:flex;flex-wrap:wrap;gap:6px;font-size:14px;color:var(--muted);align-items:center}
+.pill{border-radius:8px;padding:2px 8px;font-size:13px;font-weight:600;background:var(--fill);color:var(--ink2)}
+.pill.fresh{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.pill.soon{color:var(--warn);background:color-mix(in srgb,var(--warn) 16%,transparent)}
+.pill.old{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
+.pill.ever{color:var(--ever);background:color-mix(in srgb,var(--ever) 13%,transparent)}
+.actions{display:flex;gap:8px;align-items:center}
+.actions .scroll{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none;min-width:0}
+.actions .scroll::-webkit-scrollbar{display:none}
+.btn{height:40px;border:0;background:var(--fill);border-radius:20px;padding:0 14px;font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;cursor:pointer;text-decoration:none;color:var(--ink);flex:none}
+.btn svg.i{width:18px;height:18px}
+.btn.primary{background:var(--accent);color:var(--on-accent);box-shadow:0 4px 14px rgba(242,98,46,.3),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.on{background:var(--accent-soft);color:var(--accent)}
+.btn.quiet{background:none;color:var(--muted);padding:0 8px}
+.btn.small{height:34px;font-size:14px;padding:0 12px}
+.desc{font-size:15px;color:var(--ink2);line-height:1.45;white-space:pre-line}
+.more{display:flex;flex-direction:column;gap:10px;border-top:.5px solid var(--line);padding-top:12px}
+
+/* ---------- Panels & lists ---------- */
+.panel{background:var(--card);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:.5px solid var(--glass-edge);box-shadow:var(--hi);border-radius:24px;padding:16px}
+.panel h3{margin:0;font-size:20px;font-weight:700}
+.panel .sub{margin:4px 0 0}
+.li{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:.5px solid var(--line)}
+.li:first-child{border-top:0}
+.li .t{flex:1;min-width:0}
+.li .t .a{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .t .b{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li img{width:52px;height:52px;border-radius:11px;object-fit:cover;background:var(--fill)}
+.num{width:26px;text-align:center;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.mini{width:36px;height:36px;border-radius:50%;border:0;background:var(--fill);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.mini:disabled{opacity:.3}
+.mini svg.i{width:17px;height:17px}
+input[type=text],input[type=url],input[type=password]{width:100%;height:48px;font-size:17px;padding:0 16px;border-radius:14px;border:0;background:var(--fill);color:var(--ink);outline:none}
+input:focus{box-shadow:0 0 0 2px var(--accent)}
+.row{display:flex;gap:8px;align-items:center;margin-top:12px}
+.feedurl{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all;color:var(--muted);background:var(--fill);padding:10px 12px;border-radius:12px;margin-top:10px}
+details summary{cursor:pointer;color:var(--accent);font-size:16px;font-weight:600;list-style:none;margin-top:12px}
+details summary::-webkit-details-marker{display:none}
+.hint{font-size:14px;color:var(--muted);margin-top:8px;line-height:1.45}
+
+/* ---------- Stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{padding:14px;border-radius:20px}
+.stat .k{font-size:13px;color:var(--muted);font-weight:600}
+.stat .v{font-size:28px;font-weight:700;letter-spacing:-.01em;margin-top:4px;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:15px;font-weight:600;color:var(--muted);margin-left:2px}
+.bars{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.bar{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:15px}
+.bar .track{grid-column:1/-1;height:8px;border-radius:4px;background:var(--fill);overflow:hidden}
+.bar .fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#ff9a5a,var(--accent))}
+.bar .n{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- Empty ---------- */
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 24px 20px;gap:10px}
+.empty .ico{width:84px;height:84px;border-radius:26px;display:grid;place-items:center;color:var(--accent);margin-bottom:6px}
+.empty .ico svg.i{width:40px;height:40px;stroke-width:1.6}
+.empty h2{font-size:22px;margin:0}
+.empty p{color:var(--muted);margin:0;max-width:340px;font-size:16px;line-height:1.45}
+.empty .row{justify-content:center;flex-wrap:wrap}
+
+/* ---------- Sheet & toast ---------- */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;z-index:41;left:50%;bottom:max(14px, env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);border-radius:32px;padding:20px;transform:translate(-50%,130%);transition:transform .35s cubic-bezier(.2,.9,.25,1)}
+.sheet.show{transform:translate(-50%,0)}
+.sheet h3{margin:0 0 4px;font-size:22px}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translate(-50%,-140%);z-index:50;padding:12px 18px;border-radius:22px;font-size:15px;font-weight:600;max-width:92vw;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
+.toast.show{transform:translate(-50%,0)}
 </style>
 </head>
 <body>
-<header>
+<header id="hdr">
   <div class="top">
-    <div><h1 id="h-title">Fila</h1><div class="sub" id="h-sub"></div></div>
-    <button class="btn ghost" id="btn-refresh" title="Atualizar">↻</button>
+    <div style="min-width:0"><h1 id="h-title">Fila</h1><div class="sub" id="h-sub">&nbsp;</div></div>
+    <div class="hbtns">
+      <button class="round glass" id="btn-refresh" aria-label="Atualizar"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+      <button class="round accent" id="btn-add" aria-label="Mandar episódio"><svg class="i" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
   </div>
   <div id="filterbar"></div>
 </header>
 <main id="main"></main>
-<nav class="tabs" id="tabs">
-  <button data-tab="inbox"><b>⬇︎</b>Inbox<span id="cnt-inbox"></span></button>
-  <button data-tab="queue"><b>☰</b>Fila</button>
-  <button data-tab="watch"><b>⌚︎</b>Watch</button>
-  <button data-tab="done"><b>✓</b>Ouvidos</button>
-  <button data-tab="settings"><b>⚙︎</b>Ajustes</button>
+
+<nav class="tabbar glass" id="tabs">
+  <button data-tab="inbox"><svg class="i" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>Inbox<span id="cnt-inbox"></span></button>
+  <button data-tab="queue"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/><path d="M17 15.5v5l4-2.5z" fill="currentColor"/></svg>Fila</button>
+  <button data-tab="watch"><svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3h4.6l.7 3M9 18l.7 3h4.6l.7-3M12 9.5V12l1.5 1.5"/></svg>Watch</button>
+  <button data-tab="done"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg>Ouvidos</button>
+  <button data-tab="settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.3"/><circle cx="8" cy="17" r="2.3"/></svg>Ajustes</button>
 </nav>
-<div class="toast" id="toast"></div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet glass" id="sheet">
+  <h3>Mandar pra Fila</h3>
+  <div class="sub">Cole o link de um episódio do Apple Podcasts.</div>
+  <div class="row"><input type="url" id="add-url" placeholder="https://podcasts.apple.com/…?i=…" autocomplete="off"></div>
+  <div class="row"><button class="btn quiet" id="sheet-cancel">Cancelar</button><div style="flex:1"></div><button class="btn" id="sheet-paste">Colar</button><button class="btn primary" id="sheet-send">Mandar</button></div>
+</div>
+<div class="toast glass" id="toast"></div>
 
 <script>
 const API = "https://khevvlkznbewbktlmryt.supabase.co/functions/v1/fila";
@@ -97,7 +209,6 @@ const LS = {
   get(k, d) { try { const v = localStorage.getItem("fila:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem("fila:" + k, JSON.stringify(v)); } catch {} },
 };
-// token pode chegar pelo link #t=...
 const hashT = new URLSearchParams(location.hash.slice(1)).get("t");
 if (hashT) { LS.set("token", hashT); history.replaceState(null, "", location.pathname); }
 
@@ -105,10 +216,24 @@ const state = {
   tab: LS.get("tab", "queue"),
   episodes: [], lists: [], shows: [], config: {},
   f: LS.get("filters", { theme: "", dur: "", show: "", age: "", sort: "pub_desc", lang: "" }),
-  open: {},
+  open: {}, loaded: false,
 };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const I = {
+  play: '<svg class="i" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  up: '<svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  ext: '<svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>',
+  inbox: '<svg class="i" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>',
+  list: '<svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg>',
+  watch: '<svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3h4.6l.7 3M9 18l.7 3h4.6l.7-3"/></svg>',
+  done: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg>',
+  copy: '<svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+};
 
 async function api(path, body) {
   const r = await fetch(API + path, {
@@ -121,13 +246,13 @@ async function api(path, body) {
   if (!r.ok || out.ok === false) throw new Error(out.error || "Erro " + r.status);
   return out;
 }
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
 
 async function load() {
   if (!LS.get("token", "")) { state.tab = "settings"; render(); return; }
   try {
     const [eps, lists, shows, config] = await Promise.all([api("/episodes"), api("/lists"), api("/shows"), api("/config")]);
-    Object.assign(state, { episodes: eps, lists, shows, config });
+    Object.assign(state, { episodes: eps, lists, shows, config, loaded: true });
   } catch (e) { toast(e.message); }
   render();
 }
@@ -137,28 +262,28 @@ const DAY = 86400000;
 function ago(d) {
   if (!d) return "?";
   const days = Math.floor((Date.now() - new Date(d)) / DAY);
-  if (days <= 0) return "hoje"; if (days === 1) return "ontem";
-  if (days < 7) return `há ${days} dias`; if (days < 60) return `há ${Math.round(days / 7)} sem`;
+  if (days <= 0) return "Hoje"; if (days === 1) return "Ontem";
+  if (days < 7) return `${days} dias atrás`; if (days < 60) return `${Math.round(days / 7)} sem atrás`;
   return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
 }
 const mins = (s) => (s ? Math.round(s / 60) : null);
 const fmtDur = (s) => { const m = mins(s); if (m == null) return "—"; return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${m} min`; };
+const fmtHours = (m) => (m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1).replace(".", ",")}<small>h</small>` : `${m}<small>min</small>`);
 function validity(e) {
-  if (e.kind === "evergreen" || !e.expires_at) return { cls: "ever", label: "Não vence", rank: 0 };
+  if (e.kind === "evergreen" || !e.expires_at) return { cls: "ever", label: "Não vence" };
   const left = (new Date(e.expires_at) - Date.now()) / DAY;
-  if (left < 0) return { cls: "old", label: `Vencido há ${Math.ceil(-left)}d`, rank: 3 };
-  if (left < (e.kind === "news" ? 1 : 5)) return { cls: "soon", label: `Vence em ${Math.max(1, Math.round(left))}d`, rank: 2 };
-  return { cls: "fresh", label: "Fresco", rank: 1 };
+  if (left < 0) return { cls: "old", label: `Vencido` };
+  if (left < (e.kind === "news" ? 1 : 5)) return { cls: "soon", label: `Vence em ${Math.max(1, Math.round(left))}d` };
+  return { cls: "fresh", label: "Fresco" };
 }
-const DUR = [
-  ["", "Qualquer duração"], ["0-20", "Até 20 min"], ["20-45", "20–45 min"], ["45-90", "45–90 min"], ["90-999", "90+ min"],
-];
-const AGE = [["", "Qualquer idade"], ["fresh", "Frescos"], ["soon", "Vencendo"], ["old", "Vencidos"], ["ever", "Não vencem"]];
+const DUR = [["", "Duração"], ["0-20", "Até 20 min"], ["20-45", "20–45 min"], ["45-90", "45–90 min"], ["90-999", "90+ min"]];
+const AGE = [["", "Validade"], ["fresh", "Frescos"], ["soon", "Vencendo"], ["old", "Vencidos"], ["ever", "Não vencem"]];
 const KIND_LABEL = { news: "Notícia · 3 dias", tech: "Tech · 3 semanas", evergreen: "Não vence" };
+const LANG = { English: "Inglês", Portuguese: "Português", Spanish: "Espanhol" };
 
 function applyFilters(list) {
   const f = state.f;
-  let out = list.filter((e) => {
+  const out = list.filter((e) => {
     if (f.theme && e.theme !== f.theme) return false;
     if (f.show && String(e.show_id) !== f.show) return false;
     if (f.lang && e.language !== f.lang) return false;
@@ -177,22 +302,24 @@ function applyFilters(list) {
 }
 
 function filterBar(items) {
+  if (!items.length) return "";
   const f = state.f;
   const themes = [...new Set(items.map((e) => e.theme).filter(Boolean))].sort();
   const shows = [...new Map(items.map((e) => [String(e.show_id), e.show_title])).entries()].sort((a, b) => (a[1] || "").localeCompare(b[1] || ""));
   const langs = [...new Set(items.map((e) => e.language).filter(Boolean))];
   const opt = (arr, cur) => arr.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`).join("");
+  const sel = (k, cur) => `class="chip ${cur ? "on" : ""}" data-f="${k}"`;
   return `
   <div class="filters">
     <button class="chip ${!f.theme ? "on" : ""}" data-theme="">Todos</button>
     ${themes.map((t) => `<button class="chip ${f.theme === t ? "on" : ""}" data-theme="${esc(t)}">${esc(t)}</button>`).join("")}
   </div>
   <div class="filters">
-    <select class="chip" data-f="dur">${opt(DUR, f.dur)}</select>
-    <select class="chip" data-f="age">${opt(AGE, f.age)}</select>
-    <select class="chip" data-f="show">${opt([["", "Todos os programas"], ...shows], f.show)}</select>
-    ${langs.length > 1 ? `<select class="chip" data-f="lang">${opt([["", "Idioma"], ...langs.map((l) => [l, { English: "Inglês", Portuguese: "Português", Spanish: "Espanhol" }[l] || l])], f.lang)}</select>` : ""}
     <select class="chip" data-f="sort">${opt([["pub_desc", "Mais novos"], ["pub_asc", "Mais antigos"], ["expiring", "Vencendo antes"], ["dur_asc", "Mais curtos"], ["dur_desc", "Mais longos"]], f.sort)}</select>
+    <select ${sel("dur", f.dur)}>${opt(DUR, f.dur)}</select>
+    <select ${sel("age", f.age)}>${opt(AGE, f.age)}</select>
+    <select ${sel("show", f.show)}>${opt([["", "Programa"], ...shows], f.show)}</select>
+    ${langs.length > 1 ? `<select ${sel("lang", f.lang)}>${opt([["", "Idioma"], ...langs.map((l) => [l, LANG[l] || l])], f.lang)}</select>` : ""}
   </div>`;
 }
 
@@ -202,127 +329,195 @@ function card(e, mode) {
   const v = validity(e);
   const listBtns = state.lists.map((l) => {
     const on = inList(l.slug, e.id);
-    return `<button class="btn ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? "✓ " : "+ "}${esc(l.title.replace("Fila · ", ""))}</button>`;
+    return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace("Fila · ", ""))}</button>`;
   }).join("");
   const actions = {
-    inbox: `<button class="btn primary" data-act="keep" data-id="${e.id}">Manter</button>
-            <button class="btn" data-act="dismiss" data-id="${e.id}">Descartar</button>`,
-    queue: `${listBtns}<button class="btn primary" data-act="done" data-id="${e.id}">Ouvi</button>
-            <button class="btn ghost" data-act="dismiss" data-id="${e.id}">Descartar</button>`,
+    inbox: `<div class="scroll"><button class="btn quiet" data-act="dismiss" data-id="${e.id}">${I.x}Descartar</button></div>
+            <button class="btn primary" data-act="keep" data-id="${e.id}">${I.check}Manter</button>`,
+    queue: `<div class="scroll">${listBtns}</div>
+            <button class="btn primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
     done: e.notion_page_id
-      ? `<a class="btn ghost" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank">Abrir no Notion</a>`
-      : `<button class="btn" data-act="notion" data-id="${e.id}">Reenviar pro Notion</button><span class="sub">${esc(e.notion_error || "")}</span>`,
+      ? `<div class="scroll"><span class="hint" style="margin:0">Ouvido ${ago(e.done_at).toLowerCase()}</span></div><a class="btn small" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank">${I.ext}Notion</a>`
+      : `<div class="scroll"><span class="hint" style="margin:0">${esc(e.notion_error ? (/NOTION_TOKEN/.test(e.notion_error) ? "Notion ainda não conectado" : "Falhou ao enviar pro Notion") : "Ouvido " + ago(e.done_at).toLowerCase())}</span></div><button class="btn small" data-act="notion" data-id="${e.id}">Enviar pro Notion</button>`,
   }[mode];
   const open = state.open[e.id];
   return `<div class="card">
-    <img src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
-    <div>
-      <div class="show">${esc(e.show_title)}</div>
-      <div class="title" data-act="toggle" data-id="${e.id}">${esc(e.title)}</div>
-      <div class="meta">
-        <span>${ago(e.pub_date)}</span><span>· ${fmtDur(e.duration_sec)}</span>
-        <span class="tag">${esc(e.theme || "Sem tema")}</span>
-        ${mode !== "done" ? `<span class="tag ${v.cls}">${v.label}</span>` : `<span>ouvido ${ago(e.done_at)}</span>`}
+    <div class="card-top">
+      <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <div style="min-width:0">
+        <div class="show">${esc(e.show_title)}</div>
+        <div class="title" data-act="toggle" data-id="${e.id}">${esc(e.title)}</div>
+        <div class="meta">
+          <span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>
+        </div>
+        <div class="meta" style="margin-top:6px">
+          <span class="pill">${esc(e.theme || "Sem tema")}</span>
+          ${mode !== "done" ? `<span class="pill ${v.cls}">${v.label}</span>` : ""}
+        </div>
       </div>
-      ${open ? `<div class="desc">${esc((e.description || "").slice(0, 900))}</div>
-        <div class="filters">
+    </div>
+    ${open ? `<div class="more">
+        <div class="desc">${esc((e.description || "Sem descrição.").slice(0, 900))}</div>
+        <div class="filters" style="margin:0;padding:0">
           ${["news", "tech", "evergreen"].map((k) => `<button class="chip ${e.kind === k ? "on" : ""}" data-act="kind" data-kind="${k}" data-id="${e.id}">${KIND_LABEL[k]}</button>`).join("")}
         </div>
-        <div class="filters">
+        <div class="filters" style="margin:0;padding:0">
           <select class="chip" data-act="theme" data-id="${e.id}">${(state.config.themes || []).map((t) => `<option ${t === e.theme ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>
           <a class="chip" href="${esc(e.apple_url)}" target="_blank">Abrir na Apple ↗</a>
+          ${mode !== "done" ? `<button class="chip" data-act="dismiss" data-id="${e.id}">Descartar</button>` : ""}
         </div>
-        ${e.shelves?.length ? `<div class="sub">Shelves: ${e.shelves.map(esc).join(", ")}</div>` : ""}` : ""}
-    </div>
+        ${e.shelves?.length ? `<div class="hint" style="margin:0">Shelves: ${e.shelves.map(esc).join(", ")}</div>` : ""}
+      </div>` : ""}
     <div class="actions">${actions}</div>
   </div>`;
 }
 
+function empty(icon, title, text, buttons = "") {
+  return `<div class="empty"><div class="ico glass">${icon}</div><h2>${title}</h2><p>${text}</p>${buttons ? `<div class="row">${buttons}</div>` : ""}</div>`;
+}
+
 // ---------- views ----------
-function viewList(status, mode, emptyMsg) {
-  const all = state.episodes.filter((e) => e.status === status || (status === "queue" && e.status === "listening"));
-  const items = mode === "done" ? all.sort((a, b) => new Date(b.done_at) - new Date(a.done_at)) : applyFilters(all);
-  $("#filterbar").innerHTML = mode === "done" ? "" : filterBar(all);
+function viewInbox() {
+  const all = state.episodes.filter((e) => e.status === "inbox");
+  const items = applyFilters(all);
+  $("#filterbar").innerHTML = filterBar(all);
+  setSub(all.length ? `${all.length} novos · triagem em ordem de publicação` : "Novos episódios dos programas que você segue");
+  if (!all.length)
+    return empty(I.inbox, "Inbox zerada", state.shows.some((s) => s.follow)
+      ? "Quando sair episódio novo dos programas que você segue, ele aparece aqui pra você manter ou descartar."
+      : "Siga seus programas e os episódios novos chegam aqui sozinhos, em ordem de publicação. Chega de salvar 3 semanas de uma vez.",
+      `<button class="btn primary" data-go="settings">Seguir programas</button>`);
+  const old = all.filter((e) => validity(e).cls === "old").length;
+  return (old ? `<div class="row" style="justify-content:flex-end;margin:0 0 10px"><button class="btn small" data-act="dismiss-old">${I.trash}Descartar ${old} vencidos</button></div>` : "")
+    + `<div class="grid">${items.map((e) => card(e, "inbox")).join("")}</div>`;
+}
+
+function viewQueue() {
+  const all = state.episodes.filter((e) => e.status === "queue" || e.status === "listening");
+  const items = applyFilters(all);
+  $("#filterbar").innerHTML = filterBar(all);
   const totalMin = items.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
-  $("#h-sub").textContent = `${items.length} de ${all.length} episódios · ${Math.round(totalMin / 60)}h de áudio`;
-  if (mode === "inbox" && items.length)
-    return `<div class="flex" style="justify-content:flex-end"><button class="btn ghost" data-act="dismiss-old">Descartar vencidos</button></div>` + items.map((e) => card(e, mode)).join("");
-  return items.length ? items.map((e) => card(e, mode)).join("") : `<div class="empty">${emptyMsg}</div>`;
+  setSub(all.length ? `${items.length}${items.length !== all.length ? " de " + all.length : ""} episódios · ${fmtDur(totalMin * 60)} de áudio` : "Seus episódios escolhidos");
+  if (!all.length)
+    return empty(I.list, "Fila vazia", "Mande episódios pelo Compartilhar do Apple Podcasts (atalho “Mandar pra Fila”), pelo botão + aqui em cima, ou mantenha os da Inbox.",
+      `<button class="btn primary" data-act="open-add">${I.plus}Mandar episódio</button><button class="btn" data-go="inbox">Ir pra Inbox</button>`);
+  if (!items.length) return empty(I.list, "Nada com esses filtros", "Tente outra duração, tema ou validade.", `<button class="btn" data-act="clear-filters">Limpar filtros</button>`);
+  return `<div class="grid">${items.map((e) => card(e, "queue")).join("")}</div>`;
+}
+
+function viewDone() {
+  $("#filterbar").innerHTML = "";
+  const done = state.episodes.filter((e) => e.status === "done").sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
+  const now = Date.now();
+  const sumMin = (arr) => arr.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
+  const week = done.filter((e) => now - new Date(e.done_at) < 7 * DAY);
+  const month = done.filter((e) => now - new Date(e.done_at) < 30 * DAY);
+  setSub(`${done.length} episódios ouvidos pelo Fila`);
+  const byTheme = {};
+  month.forEach((e) => { byTheme[e.theme || "Outros"] = (byTheme[e.theme || "Outros"] || 0) + (mins(e.duration_sec) || 0); });
+  const themes = Object.entries(byTheme).sort((a, b) => b[1] - a[1]);
+  const max = themes[0]?.[1] || 1;
+  let html = `<div class="stats">
+    <div class="stat glass"><div class="k">7 dias</div><div class="v">${fmtHours(sumMin(week))}</div></div>
+    <div class="stat glass"><div class="k">30 dias</div><div class="v">${fmtHours(sumMin(month))}</div></div>
+    <div class="stat glass"><div class="k">Episódios</div><div class="v">${done.length}</div></div>
+  </div>`;
+  if (themes.length)
+    html += `<div class="section-title">Temas · 30 dias</div><div class="panel"><div class="bars" style="margin:0">${themes.map(([t, m]) =>
+      `<div class="bar"><span>${esc(t)}</span><span class="n">${fmtDur(m * 60)}</span><div class="track"><div class="fill" style="width:${Math.max(4, (m / max) * 100)}%"></div></div></div>`).join("")}</div></div>`;
+  if (!done.length)
+    return html + empty(I.done, "Nada ouvido ainda", "Toque em “Ouvi” num episódio da Fila. Ele vem pra cá e vira uma página na sua base 📻 Podcasts do Notion, com tema, duração e datas.",
+      `<button class="btn primary" data-go="queue">Ir pra Fila</button>`);
+  return html + `<div class="section-title">Histórico</div><div class="grid">${done.map((e) => card(e, "done")).join("")}</div>`;
 }
 
 function viewWatch() {
   $("#filterbar").innerHTML = "";
-  $("#h-sub").textContent = "Cada lista vira um programa no Apple Podcasts";
+  setSub("Cada lista vira um programa no Apple Podcasts");
   const byId = Object.fromEntries(state.episodes.map((e) => [e.id, e]));
-  return state.lists.map((l) => {
+  return `<div class="grid">` + state.lists.map((l) => {
     const items = (l.fila_list_items || []).sort((a, b) => a.position - b.position).map((i) => byId[i.episode_id]).filter((e) => e && e.status !== "done");
     const total = items.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
     const feed = `${API}/feed/${l.slug}.xml?t=${LS.get("token", "")}`;
+    const name = l.title.replace("Fila · ", "");
     return `<div class="panel">
-      <h3>${esc(l.title)}</h3>
-      <div class="sub">${items.length} episódios · ${fmtDur(total * 60)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <h3>${esc(name)}</h3><span class="sub">${items.length} · ${total ? fmtDur(total * 60) : "vazia"}</span>
+      </div>
+      <div style="margin-top:6px">
       ${items.map((e, i) => `<div class="li">
-        <button class="mini" data-act="move" data-op="up" data-slug="${l.slug}" data-id="${e.id}" ${i === 0 ? "disabled" : ""}>↑</button>
-        <div class="t"><div><b>${esc(e.title)}</b></div><div class="sub">${esc(e.show_title)} · ${fmtDur(e.duration_sec)} · ${ago(e.pub_date)}</div></div>
-        <button class="mini" data-act="move" data-op="remove" data-slug="${l.slug}" data-id="${e.id}">✕</button>
-      </div>`).join("") || `<div class="sub" style="padding:10px 0">Vazia. Na aba Fila, toque em “+ ${esc(l.title.replace("Fila · ", ""))}”.</div>`}
-      <details style="margin-top:8px"><summary>Assinar no Apple Podcasts</summary>
+        <span class="num">${i + 1}</span>
+        <img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
+        <div class="t"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title)} · ${fmtDur(e.duration_sec)}</div></div>
+        <button class="mini" aria-label="Subir" data-act="move" data-op="up" data-slug="${l.slug}" data-id="${e.id}" ${i === 0 ? "disabled" : ""}>${I.up}</button>
+        <button class="mini" aria-label="Remover" data-act="move" data-op="remove" data-slug="${l.slug}" data-id="${e.id}">${I.x}</button>
+      </div>`).join("") || `<div class="hint">Vazia. Na Fila, toque em “+ ${esc(name)}” nos episódios que quer levar.</div>`}
+      </div>
+      <details><summary>Assinar no Apple Podcasts</summary>
         <div class="feedurl">${esc(feed)}</div>
-        <div class="flex"><button class="btn" data-act="copy" data-text="${esc(feed)}">Copiar link do feed</button>
+        <div class="row"><button class="btn" data-act="copy" data-text="${esc(feed)}">${I.copy}Copiar link</button>
         <a class="btn" href="${esc(feed.replace(/^https:/, "podcast:"))}">Abrir no Podcasts</a></div>
-        <div class="sub" style="margin-top:6px">No app Podcasts: Biblioteca → ••• → Seguir um programa por URL. Faça isso uma vez só. Depois, ative “Baixar episódios” pra ele ir pro Watch.</div>
+        <div class="hint">No Podcasts: Biblioteca → ••• → Seguir um programa por URL. Faça uma vez só e ligue “Baixar episódios” pra ir pro Watch.</div>
       </details>
     </div>`;
-  }).join("");
+  }).join("") + `</div>`;
 }
 
 function viewSettings() {
   $("#filterbar").innerHTML = "";
-  $("#h-sub").textContent = "Programas, token e integrações";
+  setSub("Programas, integrações e acesso");
   const c = state.config;
-  return `
-  <div class="panel">
-    <h3>Mandar episódio</h3>
-    <div class="sub">Cole um link do Apple Podcasts (o Atalho do Compartilhar faz isso por você).</div>
-    <div class="flex" style="margin-top:8px"><input type="url" id="add-url" placeholder="https://podcasts.apple.com/…?i=…"><button class="btn primary" data-act="add">Mandar</button></div>
-  </div>
-  <div class="panel">
+  const followed = state.shows.filter((s) => s.follow).length;
+  return `<div class="grid">
+  <div class="panel" style="grid-column:1/-1">
     <h3>Inbox automática</h3>
-    <div class="sub">Programas seguidos aqui entram sozinhos na Inbox, em ordem de publicação (o app checa a cada hora). Cole o link do programa no Apple Podcasts.</div>
-    <div class="flex" style="margin-top:8px"><input type="url" id="show-url" placeholder="https://podcasts.apple.com/br/podcast/…/id123"><button class="btn primary" data-act="follow">Seguir</button></div>
-    ${state.shows.map((s) => `<div class="li"><img src="${esc(s.artwork || "")}" style="width:34px;height:34px;border-radius:7px"><div class="t"><div><b>${esc(s.title)}</b></div><div class="sub">${esc(s.genre || "")}${s.last_polled_at ? " · lido " + ago(s.last_polled_at) : ""}</div></div>
-      <button class="btn ${s.follow ? "on" : ""}" data-act="unfollow" data-id="${s.id}" data-follow="${!s.follow}">${s.follow ? "Seguindo" : "Seguir"}</button></div>`).join("")}
+    <div class="sub">${followed ? `Seguindo ${followed} programa${followed > 1 ? "s" : ""}. O app checa os RSS a cada hora.` : "Cole o link de um programa do Apple Podcasts pra seguir."}</div>
+    <div class="row"><input type="url" id="show-url" placeholder="https://podcasts.apple.com/br/podcast/…/id123"><button class="btn primary" data-act="follow">Seguir</button></div>
+    <div style="margin-top:8px">
+    ${state.shows.map((s) => `<div class="li"><img src="${esc(s.artwork || "")}" alt=""><div class="t"><div class="a">${esc(s.title)}</div><div class="b">${esc(s.genre || "")}${s.last_polled_at ? " · lido " + ago(s.last_polled_at).toLowerCase() : ""}</div></div>
+      <button class="btn small ${s.follow ? "on" : ""}" data-act="unfollow" data-id="${s.id}" data-follow="${!s.follow}">${s.follow ? "Seguindo" : "Seguir"}</button></div>`).join("")}
+    </div>
   </div>
   <div class="panel">
     <h3>Integrações</h3>
-    <div class="li"><div class="t"><div>Notion (📻 Podcasts)</div></div><span class="tag ${c.notion ? "fresh" : "old"}">${c.notion ? "Conectado" : "Falta NOTION_TOKEN"}</span></div>
-    <div class="li"><div class="t"><div>IA pra tema e Shelves</div></div><span class="tag ${c.ai ? "fresh" : "soon"}">${c.ai ? "Ligada" : "Usando gênero da Apple"}</span></div>
-    ${c.notion ? `<button class="btn" data-act="shelves" style="margin-top:6px">Sincronizar Shelves do Notion</button>` : ""}
+    <div class="li"><div class="t"><div class="a">Notion · 📻 Podcasts</div><div class="b">Cria a página quando você toca “Ouvi”</div></div><span class="pill ${c.notion ? "fresh" : "old"}">${c.notion ? "Conectado" : "Desligado"}</span></div>
+    <div class="li"><div class="t"><div class="a">IA pra tema e Shelves</div><div class="b">${c.ai ? "Classifica cada episódio" : "Hoje usa o gênero da Apple"}</div></div><span class="pill ${c.ai ? "fresh" : "soon"}">${c.ai ? "Ligada" : "Básico"}</span></div>
+    ${c.notion ? `<button class="btn" data-act="shelves" style="margin-top:8px">Sincronizar Shelves do Notion</button>` : ""}
   </div>
   <div class="panel">
-    <h3>Token de acesso</h3>
-    <input type="password" id="token" value="${esc(LS.get("token", ""))}" placeholder="token">
-    <div class="flex" style="margin-top:8px"><button class="btn primary" data-act="save-token">Salvar</button>
-    <select class="chip" id="theme-pick"><option value="">Tema do sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div>
+    <h3>Aparência e acesso</h3>
+    <div class="row"><select class="chip" id="theme-pick" style="flex:1"><option value="">Seguir o sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div>
+    <div class="row"><input type="password" id="token" value="${esc(LS.get("token", ""))}" placeholder="Token de acesso"><button class="btn primary" data-act="save-token">Salvar</button></div>
+  </div>
   </div>`;
 }
+
+function setSub(t) { $("#h-sub").textContent = t; }
 
 function render() {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === state.tab));
   const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes" };
   $("#h-title").textContent = titles[state.tab];
   const nInbox = state.episodes.filter((e) => e.status === "inbox").length;
-  $("#cnt-inbox").innerHTML = nInbox ? `<span class="badge">${nInbox}</span>` : "";
-  const html = {
-    inbox: () => viewList("inbox", "inbox", "Inbox zerada. Novos episódios dos programas seguidos aparecem aqui."),
-    queue: () => viewList("queue", "queue", "Nada na fila com esses filtros."),
-    done: () => viewList("done", "done", "Nada ouvido ainda."),
-    watch: viewWatch,
-    settings: viewSettings,
-  }[state.tab]();
-  $("#main").innerHTML = html;
+  $("#cnt-inbox").innerHTML = nInbox ? `<span class="dot">${nInbox > 99 ? "99+" : nInbox}</span>` : "";
+  $("#main").innerHTML = { inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings }[state.tab]();
   const tp = $("#theme-pick"); if (tp) tp.value = LS.get("theme", "");
 }
+
+// ---------- add sheet ----------
+function openSheet(show) {
+  $("#sheet").classList.toggle("show", show); $("#scrim").classList.toggle("show", show);
+  if (show) setTimeout(() => $("#add-url").focus(), 250); else $("#add-url").blur();
+}
+$("#btn-add").onclick = () => openSheet(true);
+$("#scrim").onclick = $("#sheet-cancel").onclick = () => openSheet(false);
+$("#sheet-paste").onclick = async () => { try { $("#add-url").value = await navigator.clipboard.readText(); } catch { toast("Cole com toque longo no campo"); } };
+$("#sheet-send").onclick = async () => {
+  const u = $("#add-url").value.trim(); if (!u) return;
+  openSheet(false); toast("Buscando episódio…");
+  try { const r = await api("/add", { url: u }); toast(r.message); $("#add-url").value = ""; state.tab = "queue"; LS.set("tab", "queue"); load(); }
+  catch (e) { toast(e.message); }
+};
 
 // ---------- eventos ----------
 function patchLocal(id, patch) { const e = state.episodes.find((x) => x.id === id); if (e) Object.assign(e, patch); }
@@ -330,7 +525,9 @@ async function act(el) {
   const { act: a, id, slug } = el.dataset;
   try {
     if (a === "toggle") { state.open[id] = !state.open[id]; return render(); }
-    if (a === "keep") { patchLocal(id, { status: "queue" }); render(); await api(`/episodes/${id}`, { status: "queue" }); return; }
+    if (a === "open-add") return openSheet(true);
+    if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "" }; LS.set("filters", state.f); return render(); }
+    if (a === "keep") { patchLocal(id, { status: "queue" }); render(); await api(`/episodes/${id}`, { status: "queue" }); return toast("Na Fila"); }
     if (a === "dismiss") { patchLocal(id, { status: "dismissed" }); render(); await api(`/episodes/${id}`, { status: "dismissed" }); return toast("Descartado"); }
     if (a === "dismiss-old") {
       const old = state.episodes.filter((e) => e.status === "inbox" && validity(e).cls === "old");
@@ -343,24 +540,21 @@ async function act(el) {
       const r = await api(`/episodes/${id}`, { status: "done" });
       patchLocal(id, r.episode); if (r.notion?.page_id) patchLocal(id, { notion_page_id: r.notion.page_id });
       state.lists.forEach((l) => (l.fila_list_items = (l.fila_list_items || []).filter((i) => i.episode_id !== id)));
-      return toast(r.notion?.page_id ? "Ouvido · salvo no Notion" : "Ouvido · Notion: " + (r.notion?.error || "pendente"));
+      render();
+      return toast(r.notion?.page_id ? "Ouvido · salvo no Notion" : "Ouvido · Notion pendente");
     }
     if (a === "notion") { const r = await api("/notion/retry", {}); toast(r.out.some((o) => o.page) ? "Enviado pro Notion" : (r.out[0]?.error || "Nada pendente")); return load(); }
     if (a === "list" || a === "move") {
       const op = a === "list" ? (inList(slug, id) ? "remove" : "add") : el.dataset.op;
       const r = await api(`/lists/${slug}`, { episode_id: id, op });
       const l = state.lists.find((x) => x.slug === slug); l.fila_list_items = r.order.map((episode_id, position) => ({ episode_id, position }));
-      render(); if (a === "list") toast(op === "add" ? `Na ${l.title}` : "Removido da lista"); return;
+      render(); if (a === "list") toast(op === "add" ? `+ ${l.title.replace("Fila · ", "")}` : "Removido da lista"); return;
     }
-    if (a === "kind") { const r = await api(`/episodes/${id}`, { kind: el.dataset.kind }); return load(); }
+    if (a === "kind") { await api(`/episodes/${id}`, { kind: el.dataset.kind }); return load(); }
     if (a === "copy") { await navigator.clipboard.writeText(el.dataset.text); return toast("Link copiado"); }
-    if (a === "add") {
-      const u = $("#add-url").value.trim(); if (!u) return; toast("Buscando episódio…");
-      const r = await api("/add", { url: u }); toast(r.message); $("#add-url").value = ""; return load();
-    }
     if (a === "follow") {
       const u = $("#show-url").value.trim(); if (!u) return;
-      const r = await api("/shows", { url: u, follow: true }); toast("Seguindo " + r.show.title + ". Lendo o RSS…");
+      const r = await api("/shows", { url: u, follow: true }); toast("Seguindo " + r.show.title);
       await api("/refresh", {}); return load();
     }
     if (a === "unfollow") { await api("/shows", { id: Number(id), follow: el.dataset.follow === "true" }); return load(); }
@@ -369,9 +563,11 @@ async function act(el) {
   } catch (e) { toast(e.message); load(); }
 }
 document.addEventListener("click", (ev) => {
+  const go = ev.target.closest("[data-go]");
+  if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
   const t = ev.target.closest("[data-act]"); if (t && t.tagName !== "SELECT") { ev.preventDefault(); act(t); return; }
-  const th = ev.target.closest("[data-theme]");
-  if (th && th.classList.contains("chip")) { state.f.theme = th.dataset.theme; LS.set("filters", state.f); render(); return; }
+  const th = ev.target.closest(".chip[data-theme]");
+  if (th) { state.f.theme = th.dataset.theme; LS.set("filters", state.f); render(); return; }
   const tab = ev.target.closest("#tabs button");
   if (tab) { state.tab = tab.dataset.tab; LS.set("tab", state.tab); window.scrollTo(0, 0); render(); }
 });
@@ -382,9 +578,11 @@ document.addEventListener("change", async (ev) => {
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
 });
 $("#btn-refresh").onclick = async () => { toast("Atualizando…"); try { await api("/refresh", {}); } catch (e) {} load(); };
+window.addEventListener("scroll", () => $("#hdr").classList.toggle("scrolled", scrollY > 8), { passive: true });
 function applyTheme() { const t = LS.get("theme", ""); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 applyTheme();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+render();
 load();
 </script>
 </body>
