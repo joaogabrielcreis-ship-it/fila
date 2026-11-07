@@ -341,8 +341,8 @@ function inList(slug, id) { const l = state.lists.find((x) => x.slug === slug); 
 function card(e, mode) {
   const v = validity(e);
   const isYT = e.platform === "youtube";
-  const listBtns = isYT || !e.audio_url
-    ? `<a class="btn small" href="${esc(e.url || e.apple_url)}" target="_blank">${I.play}${isYT ? "Assistir no YouTube" : "Abrir"}</a>`
+  const listBtns = isYT || (!e.audio_url && e.platform !== "apple")
+    ?`<a class="btn small" href="${esc(e.url || e.apple_url)}" target="_blank">${I.play}${isYT ? "Assistir no YouTube" : "Abrir"}</a>`
     : state.lists.map((l) => {
     const on = inList(l.slug, e.id);
     return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace("Fila · ", ""))}</button>`;
@@ -375,7 +375,7 @@ function card(e, mode) {
       </div>
     </div>
     ${open ? `<div class="more">
-        <div class="desc">${esc((e.description || "Sem descrição.").slice(0, 900))}</div>
+        <div class="desc">${e.description === undefined ? "Carregando…" : esc((e.description || "Sem descrição.").slice(0, 900))}</div>
         <div class="filters" style="margin:0;padding:0">
           ${["news", "tech", "evergreen"].map((k) => `<button class="chip ${e.kind === k ? "on" : ""}" data-act="kind" data-kind="${k}" data-id="${e.id}">${KIND_LABEL[k]}</button>`).join("")}
         </div>
@@ -411,10 +411,12 @@ function viewInbox() {
 }
 
 // ---------- Assuntos (episódios sobre o mesmo tema) e prioridade ----------
-const STOP = new Set(("a o os as um uma de do da dos das e em no na nos nas por para pra com sem que se ao à é como mais menos sobre entre seu sua seus suas ele ela eles isso este esta esse essa ser ter vai foi são está the a an and or of to in on for with without from by at is are was be how why what who when where your you our we it its this that these those vs versus not new episode ep podcast part parte live show interview entrevista conversa talk talks special edition ft feat full week weekly daily news today hoje semana dia diário diet tbpn all-in").split(" "));
+const STOP = new Set(("a o os as um uma de do da dos das e em no na nos nas por para pra com sem que se ao à é como mais menos sobre entre seu sua seus suas ele ela eles isso este esta esse essa ser ter vai foi são está the a an and or of to in on for with without from by at is are was be how why what who when where your you our we it its this that these those vs versus not new episode ep podcast part parte live show interview entrevista conversa talk talks special edition ft feat full week weekly daily news today hoje semana dia diário diet tbpn all-in " +
+  "will would could should about more most much many some just like into over after before than then them they their there here have has had does doing done make makes making made build building built future world year years time times good great best better first last next real really thing things think people need want know going inside behind back still every ever only also even what's it's don't can't youre your yours ours mine episode episodes podcast podcasts season chapter bonus update updates guide lessons story stories ideas idea case question questions answer answers part rise fall end big small long short high low tudo todos todas sobre como mais menos muito muita onde quando porque por que qual quais quem ainda depois antes entre agora novo nova novos novas maior melhor pior grande pequeno vida mundo ano anos work works life open tech data company companies money power change changes").split(" "));
+const norm1 = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ");
 function keywords(e) {
-  const txt = `${e.title} ${e.title}`.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ");
-  return [...new Set(txt.split(/\s+/).filter((w) => w.length >= 4 && !STOP.has(w) && !/^\d+$/.test(w)))];
+  const showWords = new Set(norm1(e.show_title).split(/\s+/));
+  return [...new Set(norm1(e.title).split(/\s+/).filter((w) => w.length >= 4 && !STOP.has(w) && !showWords.has(w) && !/^\d+$/.test(w) && !/^(ep|vol)\d*$/.test(w)))];
 }
 let _clusterCache = { key: "", map: new Map(), groups: [] };
 function clusters(list) {
@@ -454,7 +456,7 @@ function prio(e) {
   const ta = (af.th[e.theme] || 0) / af.thMax, sa = (af.sh[e.show_title] || 0) / af.shMax;
   s += 0.25 * ta + 0.3 * sa;
   if (sa > 0.4) why.push(`Você ouve muito ${e.show_title}`);
-  else if (ta > 0.5) why.push(`Seu tema mais ouvido`);
+  else if (ta > 0.85 && !why.length) why.push(`Seu tema mais ouvido`);
   const age = (Date.now() - new Date(e.pub_date || e.saved_at)) / DAY;
   s += 0.15 * Math.exp(-age / 30);
   const g = state._queueClusters?.map.get(e.id);
@@ -485,7 +487,11 @@ function viewQueue() {
     return empty(I.list, "Fila vazia", "Mande episódios pelo Compartilhar do Apple Podcasts (atalho “Mandar pra Fila”), pelo botão + aqui em cima, ou mantenha os da Inbox.",
       `<button class="btn primary" data-act="open-add">${I.plus}Mandar episódio</button><button class="btn" data-go="inbox">Ir pra Inbox</button>`);
   if (!items.length) return empty(I.list, "Nada com esses filtros", "Tente outra duração, tema ou validade.", `<button class="btn" data-act="clear-filters">Limpar filtros</button>`);
-  const group = (title, sub, eps) => `<div class="group"><div class="group-h"><div><div class="gt">${esc(title)}</div><div class="sub">${sub}</div></div></div><div class="grid">${eps.map((e) => card(e, "queue")).join("")}</div></div>`;
+  const group = (title, sub, eps) => {
+    const open = state.groupOpen?.[title];
+    const shown = open ? eps : eps.slice(0, 4);
+    return `<div class="group"><div class="group-h"><div><div class="gt">${esc(title)}</div><div class="sub">${sub}</div></div></div><div class="grid">${shown.map((e) => card(e, "queue")).join("")}</div>${eps.length > shown.length ? `<div class="row" style="justify-content:center"><button class="btn small" data-act="more-group" data-g="${esc(title)}">Ver mais ${eps.length - shown.length}</button></div>` : ""}</div>`;
+  };
   const totalOf = (eps) => fmtDur(eps.reduce((s, e) => s + (e.duration_sec || 0), 0));
   if (state.group === "topic") {
     const inItems = new Set(items.map((e) => e.id));
@@ -502,7 +508,8 @@ function viewQueue() {
   }
   const top = state.f.sort === "smart" && !state.f.theme && !state.f.show && items.length > 4 ? items.slice(0, 3) : [];
   return (top.length ? `<div class="section-title" style="margin-top:6px">Ouça primeiro</div><div class="grid">${top.map((e) => card(e, "queue")).join("")}</div><div class="section-title">Resto da fila</div>` : "")
-    + `<div class="grid">${items.slice(top.length).map((e) => card(e, "queue")).join("")}</div>`;
+    + `<div class="grid">${items.slice(top.length, state.limit || 60).map((e) => card(e, "queue")).join("")}</div>`
+    + (items.length > (state.limit || 60) ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more">Mostrar mais (${items.length - (state.limit || 60)} restantes)</button></div>` : "");
 }
 
 function viewConnect() {
@@ -635,7 +642,16 @@ function patchLocal(id, patch) { const e = state.episodes.find((x) => x.id === i
 async function act(el) {
   const { act: a, id, slug } = el.dataset;
   try {
-    if (a === "toggle") { state.open[id] = !state.open[id]; return render(); }
+    if (a === "toggle") {
+      state.open[id] = !state.open[id]; render();
+      const e = state.episodes.find((x) => x.id === id);
+      if (state.open[id] && e && e.description === undefined) {
+        const d = await api(`/episodes/${id}`); e.description = d.description || ""; render();
+      }
+      return;
+    }
+    if (a === "more") { state.limit = (state.limit || 60) + 60; return render(); }
+    if (a === "more-group") { state.groupOpen = { ...(state.groupOpen || {}), [el.dataset.g]: true }; return render(); }
     if (a === "open-add") return openSheet(true);
     if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "" }; LS.set("filters", state.f); return render(); }
     if (a === "keep") { patchLocal(id, { status: "queue" }); render(); await api(`/episodes/${id}`, { status: "queue" }); return toast("Na Fila"); }
@@ -657,7 +673,9 @@ async function act(el) {
     if (a === "notion") { const r = await api("/notion/retry", {}); toast(r.out.some((o) => o.page) ? "Enviado pro Notion" : (r.out[0]?.error || "Nada pendente")); return load(); }
     if (a === "list" || a === "move") {
       const op = a === "list" ? (inList(slug, id) ? "remove" : "add") : el.dataset.op;
+      if (op === "add") toast("Preparando pro Watch…");
       const r = await api(`/lists/${slug}`, { episode_id: id, op });
+      if (r.episode) patchLocal(id, { audio_url: r.episode.audio_url, artwork: r.episode.artwork });
       const l = state.lists.find((x) => x.slug === slug); l.fila_list_items = r.order.map((episode_id, position) => ({ episode_id, position }));
       render(); if (a === "list") toast(op === "add" ? `+ ${l.title.replace("Fila · ", "")}` : "Removido da lista"); return;
     }
