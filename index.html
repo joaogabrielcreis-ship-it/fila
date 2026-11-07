@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -47,7 +47,8 @@
   --accent:#ff7a45; --accent-soft:rgba(255,122,69,.18); --on-accent:#1a0a03;
   --ok:#30d158; --warn:#ffb340; --bad:#ff6961; --ever:#a5a4ff;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html,body{overflow-x:hidden;-webkit-text-size-adjust:100%}
 html{background:var(--bg);min-height:100%}
 body{margin:0;min-height:100vh;color:var(--ink);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;
   background:
@@ -109,6 +110,8 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .pill.soon{color:var(--warn);background:color-mix(in srgb,var(--warn) 16%,transparent)}
 .pill.old{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
 .pill.ever{color:var(--ever);background:color-mix(in srgb,var(--ever) 13%,transparent)}
+.pill.yt{color:#fff;background:#ff0033}
+.art{object-position:center}
 .actions{display:flex;gap:8px;align-items:center}
 .actions .scroll{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none;min-width:0}
 .actions .scroll::-webkit-scrollbar{display:none}
@@ -197,7 +200,7 @@ details summary::-webkit-details-marker{display:none}
 <div class="scrim" id="scrim"></div>
 <div class="sheet glass" id="sheet">
   <h3>Mandar pra Fila</h3>
-  <div class="sub">Cole o link de um episódio do Apple Podcasts.</div>
+  <div class="sub">Cole o link de um episódio do Apple Podcasts ou de um vídeo do YouTube.</div>
   <div class="row"><input type="url" id="add-url" placeholder="https://podcasts.apple.com/…?i=…" autocomplete="off"></div>
   <div class="row"><button class="btn quiet" id="sheet-cancel">Cancelar</button><div style="flex:1"></div><button class="btn" id="sheet-paste">Colar</button><button class="btn primary" id="sheet-send">Mandar</button></div>
 </div>
@@ -251,8 +254,8 @@ function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.ad
 async function load() {
   if (!LS.get("token", "")) { state.tab = "settings"; render(); return; }
   try {
-    const [eps, lists, shows, config] = await Promise.all([api("/episodes"), api("/lists"), api("/shows"), api("/config")]);
-    Object.assign(state, { episodes: eps, lists, shows, config, loaded: true });
+    const [eps, lists, shows, config, stats] = await Promise.all([api("/episodes"), api("/lists"), api("/shows"), api("/config"), api("/stats")]);
+    Object.assign(state, { episodes: eps, lists, shows, config, stats, loaded: true });
   } catch (e) { toast(e.message); }
   render();
 }
@@ -327,7 +330,10 @@ function inList(slug, id) { const l = state.lists.find((x) => x.slug === slug); 
 
 function card(e, mode) {
   const v = validity(e);
-  const listBtns = state.lists.map((l) => {
+  const isYT = e.platform === "youtube";
+  const listBtns = isYT || !e.audio_url
+    ? `<a class="btn small" href="${esc(e.url || e.apple_url)}" target="_blank">${I.play}${isYT ? "Assistir no YouTube" : "Abrir"}</a>`
+    : state.lists.map((l) => {
     const on = inList(l.slug, e.id);
     return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace("Fila · ", ""))}</button>`;
   }).join("");
@@ -351,6 +357,7 @@ function card(e, mode) {
           <span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>
         </div>
         <div class="meta" style="margin-top:6px">
+          ${isYT ? `<span class="pill yt">YouTube</span>` : ""}
           <span class="pill">${esc(e.theme || "Sem tema")}</span>
           ${mode !== "done" ? `<span class="pill ${v.cls}">${v.label}</span>` : ""}
         </div>
@@ -408,27 +415,27 @@ function viewQueue() {
 function viewDone() {
   $("#filterbar").innerHTML = "";
   const done = state.episodes.filter((e) => e.status === "done").sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
-  const now = Date.now();
-  const sumMin = (arr) => arr.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
-  const week = done.filter((e) => now - new Date(e.done_at) < 7 * DAY);
-  const month = done.filter((e) => now - new Date(e.done_at) < 30 * DAY);
-  setSub(`${done.length} episódios ouvidos pelo Fila`);
-  const byTheme = {};
-  month.forEach((e) => { byTheme[e.theme || "Outros"] = (byTheme[e.theme || "Outros"] || 0) + (mins(e.duration_sec) || 0); });
-  const themes = Object.entries(byTheme).sort((a, b) => b[1] - a[1]);
-  const max = themes[0]?.[1] || 1;
+  const st = state.stats || {};
+  const total = st.count ?? done.length;
+  setSub(total ? `${total.toLocaleString("pt-BR")} episódios · ${Math.round((st.min_total || 0) / 60).toLocaleString("pt-BR")}h no total` : "Seu histórico de escuta");
+  const bars = (rows, key) => {
+    const max = rows[0]?.min || 1;
+    return `<div class="panel"><div class="bars" style="margin:0">${rows.map((r) =>
+      `<div class="bar"><span>${esc(r[key] || "Outros")}</span><span class="n">${fmtDur(r.min * 60)}${r.n ? ` · ${r.n} ep` : ""}</span><div class="track"><div class="fill" style="width:${Math.max(4, (r.min / max) * 100)}%"></div></div></div>`).join("")}</div></div>`;
+  };
   let html = `<div class="stats">
-    <div class="stat glass"><div class="k">7 dias</div><div class="v">${fmtHours(sumMin(week))}</div></div>
-    <div class="stat glass"><div class="k">30 dias</div><div class="v">${fmtHours(sumMin(month))}</div></div>
-    <div class="stat glass"><div class="k">Episódios</div><div class="v">${done.length}</div></div>
+    <div class="stat glass"><div class="k">7 dias</div><div class="v">${fmtHours(st.min_7 || 0)}</div></div>
+    <div class="stat glass"><div class="k">30 dias</div><div class="v">${fmtHours(st.min_30 || 0)}</div></div>
+    <div class="stat glass"><div class="k">12 meses</div><div class="v">${fmtHours(st.min_365 || 0)}</div></div>
   </div>`;
-  if (themes.length)
-    html += `<div class="section-title">Temas · 30 dias</div><div class="panel"><div class="bars" style="margin:0">${themes.map(([t, m]) =>
-      `<div class="bar"><span>${esc(t)}</span><span class="n">${fmtDur(m * 60)}</span><div class="track"><div class="fill" style="width:${Math.max(4, (m / max) * 100)}%"></div></div></div>`).join("")}</div></div>`;
+  if (st.themes_30?.length) html += `<div class="section-title">Temas · 30 dias</div>` + bars(st.themes_30, "theme");
+  if (st.shows_365?.length) html += `<div class="section-title">Programas · 12 meses</div>` + bars(st.shows_365, "show");
   if (!done.length)
     return html + empty(I.done, "Nada ouvido ainda", "Toque em “Ouvi” num episódio da Fila. Ele vem pra cá e vira uma página na sua base 📻 Podcasts do Notion, com tema, duração e datas.",
       `<button class="btn primary" data-go="queue">Ir pra Fila</button>`);
-  return html + `<div class="section-title">Histórico</div><div class="grid">${done.map((e) => card(e, "done")).join("")}</div>`;
+  const shown = done.slice(0, state.doneLimit || 30);
+  return html + `<div class="section-title">Últimos ouvidos</div><div class="grid">${shown.map((e) => card(e, "done")).join("")}</div>`
+    + (done.length > shown.length ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more-done">Mostrar mais</button></div>` : "");
 }
 
 function viewWatch() {
@@ -480,10 +487,9 @@ function viewSettings() {
   </div>
   <div class="panel">
     <h3>Integrações</h3>
-    <div class="li"><div class="t"><div class="a">Notion · 📻 Podcasts</div><div class="b">Cria a página quando você toca “Ouvi”</div></div><span class="pill ${c.notion ? "fresh" : "old"}">${c.notion ? "Conectado" : "Desligado"}</span></div>
+    <div class="li"><div class="t"><div class="a">Notion · 📻 Podcasts</div><div class="b">${!c.notion ? "Falta o NOTION_TOKEN no Supabase" : c.notion_synced_at ? "Sincroniza nos dois sentidos · " + ago(c.notion_synced_at).toLowerCase() : c.notion_importing ? "Importação pela metade" : "Conectado · histórico ainda não importado"}</div></div><span class="pill ${c.notion ? "fresh" : "old"}">${c.notion ? "Conectado" : "Desligado"}</span></div>
     <div class="li"><div class="t"><div class="a">IA pra tema e Shelves</div><div class="b">${c.ai ? "Classifica cada episódio" : "Hoje usa o gênero da Apple"}</div></div><span class="pill ${c.ai ? "fresh" : "soon"}">${c.ai ? "Ligada" : "Básico"}</span></div>
-    ${c.notion ? `<button class="btn" data-act="shelves" style="margin-top:8px">Sincronizar Shelves do Notion</button>` : ""}
-  </div>
+    ${c.notion ? `<div class="row">${!c.notion_synced_at ? `<button class="btn primary" data-act="notion-import">${c.notion_importing ? "Continuar importação" : "Importar histórico do Notion"}</button>` : `<button class="btn" data-act="notion-import">Sincronizar agora</button>`}<button class="btn" data-act="shelves">Shelves</button></div><div class="hint" id="import-progress"></div>` : ""}  </div>
   <div class="panel">
     <h3>Aparência e acesso</h3>
     <div class="row"><select class="chip" id="theme-pick" style="flex:1"><option value="">Seguir o sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div>
@@ -558,6 +564,17 @@ async function act(el) {
       await api("/refresh", {}); return load();
     }
     if (a === "unfollow") { await api("/shows", { id: Number(id), follow: el.dataset.follow === "true" }); return load(); }
+    if (a === "more-done") { state.doneLimit = (state.doneLimit || 30) + 30; return render(); }
+    if (a === "notion-import") {
+      el.disabled = true; let ins = 0, upd = 0, round = 0;
+      for (;;) {
+        const r = await api("/notion/sync", { max: 8 });
+        ins += r.inserted; upd += r.updated; round++;
+        const p = $("#import-progress"); if (p) p.textContent = `Importando… ${ins.toLocaleString("pt-BR")} novos, ${upd} atualizados`;
+        if (!r.has_more) break;
+      }
+      toast(`Notion: ${ins} importados, ${upd} atualizados`); return load();
+    }
     if (a === "shelves") { const r = await api("/shelves/sync", {}); return toast(`${r.count} Shelves sincronizadas`); }
     if (a === "save-token") { LS.set("token", $("#token").value.trim()); state.tab = "queue"; LS.set("tab", "queue"); return load(); }
   } catch (e) { toast(e.message); load(); }
