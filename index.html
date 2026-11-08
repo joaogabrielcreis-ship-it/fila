@@ -640,6 +640,7 @@ function reasonLabel(r) {
   if (!r) return "Arquivado";
   if (r === "expired") return "Venceu";
   if (r === "manual") return "Arquivado";
+  if (r === "stale") return "Parado há muito tempo";
   return REASONS.find((x) => x[0] === r)?.[1] || r;
 }
 function reasonSheet(e) {
@@ -802,6 +803,7 @@ function viewQueue() {
 // ---------- Seu dia: seleção curada e equilibrada ----------
 // Regras: continua o que está pela metade; no máx. 1 por programa e 1 por assunto; no máx. 2 por tema;
 // mistura durações (1 longo no máx., pelo menos 1 curto); para perto do tempo-alvo. Muda a cada dia.
+const recentListening = (e) => e.status === "listening" && (!e.apple_played_at || Date.now() - new Date(e.apple_played_at) < 30 * DAY);
 const today = () => new Date().toISOString().slice(0, 10);
 function daySeed(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296); }
 function dayPlan(all) {
@@ -809,7 +811,7 @@ function dayPlan(all) {
   const skip = new Set(LS.get(`daySkip:${today()}`, []));
   const rnd = daySeed(today() + skip.size);
   const pool = all.filter((e) => !skip.has(e.id) && validity(e).cls !== "old" && e.platform !== "youtube")
-    .map((e) => ({ e, s: prio(e).score + rnd() * 0.25 + (e.status === "listening" ? 0.6 : 0) }))
+    .map((e) => ({ e, s: prio(e).score + rnd() * 0.25 + (recentListening(e) ? 0.6 : 0) }))
     .sort((a, b) => b.s - a.s).map((x) => x.e);
   const picked = [], shows = new Set(), topics = new Set(), themes = {};
   let total = 0, long = 0, short = 0;
@@ -831,7 +833,7 @@ function dayPlan(all) {
   for (const relax of [false, true]) for (const e of pool) { if (total >= target * 0.9) break; if (!picked.includes(e) && ok(e, relax)) add(e); }
   if (!short) { const s = pool.find((e) => !picked.includes(e) && left(e) < 25 * 60 && !shows.has(e.show_title)); if (s && total + left(s) <= target * 1.25) add(s); }
   // ordem de escuta: em andamento primeiro, depois alterna temas, curto no meio
-  picked.sort((a, b) => (b.status === "listening") - (a.status === "listening"));
+  picked.sort((a, b) => recentListening(b) - recentListening(a));
   return { eps: picked, total, themes: Object.keys(themes).length, target };
 }
 function dayPanel(d) {
@@ -952,8 +954,15 @@ function notifyPanel() {
     ${row("digest", "Resumo do dia", "O que continuar, o que vence hoje e quantos novos chegaram", times("digest_at", ["06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "10:00", "12:00"]))}
     ${row("favorites", "Episódio novo dos favoritos", favs ? `${favs} programa${favs > 1 ? "s" : ""} com ★` : "Marque programas com ★ na lista da Inbox automática")}
     ${row("expiring", "Vai vencer", "Notícias e tech da Fila que vencem nas próximas 24h", times("expiring_at", ["12:00", "17:00", "18:00", "19:00", "20:00", "21:00"]))}
+    ${row("watch_empty", "Fila · Hoje vazia", "De manhã, junto do resumo: lembra de montar a lista do Watch antes de sair")}
+    ${row("half", "Pela metade", "Ao meio-dia: um episódio que você parou há 3 a 14 dias")}
+    ${row("hot_topic", "Assunto da semana", "Ao meio-dia: quando 3 ou mais programas falam do mesmo assunto")}
+    ${row("mac_stale", "Mac parado", "Quando o Mac passa 2 dias sem sincronizar (Salvos e ouvidos param de chegar)")}
+    ${row("inbox_pile", "Inbox acumulando", `Às 20h30, no máximo a cada 3 dias, se passar de ${n.inbox_max || 60} episódios`, `<select class="chip time" data-np="inbox_max">${[30, 60, 100, 150].map((v) => `<option ${Number(n.inbox_max) === v ? "selected" : ""}>${v}</option>`).join("")}</select>`)}
+    ${row("weekly", "Resumo de domingo", "Quanto você ouviu na semana e de quais temas", times("weekly_at", ["09:00", "12:00", "18:00", "19:00", "20:00"]))}
+    <div class="hint">Ao meio-dia chega no máximo uma notificação: Mac parado, depois pela metade, depois assunto da semana.</div>
     </div>
-    ${state.pushOn ? `<div class="row"><button class="btn small" data-act="push-test" data-kind="digest">Prévia do resumo</button><button class="btn small" data-act="push-test" data-kind="expiring">Prévia do vencendo</button></div>` : ""}
+    ${state.pushOn ? `<div class="fs-l" style="margin-top:12px">Prévias</div><div class="wrap">${[["digest", "Resumo"], ["expiring", "Vencendo"], ["half", "Pela metade"], ["hot_topic", "Assunto"], ["inbox_pile", "Inbox"], ["mac_stale", "Mac"], ["weekly", "Semana"]].map(([k, l]) => `<button class="chip small" data-act="push-test" data-kind="${k}">${l}</button>`).join("")}</div>` : ""}
   </div>`;
 }
 const b64uToBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
@@ -1204,7 +1213,7 @@ document.addEventListener("change", async (ev) => {
   const s = ev.target;
   if (s.dataset.f) { state.f[s.dataset.f] = s.value; LS.set("filters", state.f); render(); }
   if (s.dataset.act === "theme") { patchLocal(s.dataset.id, { theme: s.value }); await api(`/episodes/${s.dataset.id}`, { theme: s.value }).catch((e) => toast(e.message)); render(); }
-  if (s.dataset.np) { state.notify[s.dataset.np] = s.value; await api("/notify/prefs", { [s.dataset.np]: s.value }).catch((e) => toast(e.message)); toast(`Horário: ${s.value}`); }
+  if (s.dataset.np) { const v = s.dataset.np === "inbox_max" ? Number(s.value) : s.value; state.notify[s.dataset.np] = v; await api("/notify/prefs", { [s.dataset.np]: v }).catch((e) => toast(e.message)); toast(`Horário: ${s.value}`); }
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
   if (s.id === "swipe-pick") { state.swipeList = s.value; LS.set("swipeList", s.value); toast(`Deslizar → ${listName(s.value)}`); }
 });
