@@ -145,6 +145,20 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .reason-b{text-align:left;border:0;background:var(--fill);border-radius:14px;padding:13px 16px;font-size:16px;font-weight:500;color:var(--ink);cursor:pointer}
 .reason-b:active{background:var(--accent-soft)}
 .pill.reason{background:var(--accent-soft);color:var(--accent)}
+.sw{position:relative;border-radius:24px;min-width:0;overflow:hidden}
+.sw > .card{width:100%}
+.sw-bg{position:absolute;inset:0;border-radius:24px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-weight:700;font-size:15px;color:#fff;opacity:0;transition:opacity .15s}
+.sw.go-r .sw-bg{opacity:1;background:#2f8a4f}.sw.go-l .sw-bg{opacity:1;background:#c2410c}
+.sw.go-r .sw-l,.sw.go-l .sw-r{visibility:hidden}
+.sw.armed .sw-bg span{transform:scale(1.12)}
+.sw-bg span{transition:transform .15s}
+.sw > .card{position:relative;will-change:transform}
+.sw.go-r > .card,.sw.go-l > .card{background:var(--card-solid)}
+.prog{color:var(--accent);font-weight:600}
+.day{border-radius:24px;padding:16px;margin:8px 0 6px}
+.day-h{display:flex;justify-content:space-between;align-items:flex-start}
+.day-h .gt{font-size:22px;font-weight:700}
+.day .li .t{cursor:pointer}
 .archive-link{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 4px;padding:14px 16px;border-radius:20px;text-align:left;cursor:pointer;color:var(--ink);font-size:16px}
 .archive-link span{flex:1}
 .archive-link small{color:var(--muted);font-size:13px}
@@ -268,6 +282,7 @@ const state = {
   dense: LS.get("dense", false),
   needToken: false,
   open: {}, loaded: false,
+  swipeList: LS.get("swipeList", "hoje"),
 };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -422,7 +437,7 @@ function filterSheet() {
 
 function inList(slug, id) { const l = state.lists.find((x) => x.slug === slug); return !!l?.fila_list_items?.some((i) => i.episode_id === id); }
 
-function card(e, mode) {
+function cardInner(e, mode) {
   const v = validity(e);
   const isYT = e.platform === "youtube";
   const listBtns = isYT || (!e.audio_url && e.platform !== "apple")
@@ -451,7 +466,7 @@ function card(e, mode) {
       <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
       <div class="dense-t" data-act="toggle" data-id="${e.id}">
         <div class="title">${esc(e.title)}</div>
-        <div class="meta"><span class="show-s">${esc(e.show_title || "")}</span><span>· ${fmtDur(e.duration_sec)}</span>${mode === "queue" && mode !== "done" && v.cls !== "ever" ? `<span class="dot-v ${v.cls}" title="${v.label}"></span>` : ""}${isYT ? `<span class="pill yt mini-p">YT</span>` : ""}</div>
+        <div class="meta"><span class="show-s">${esc(e.show_title || "")}</span><span>· ${fmtDur(e.duration_sec)}</span>${progress(e) ? `<span class="prog">${progress(e)}</span>` : ""}${mode === "queue" && v.cls !== "ever" ? `<span class="dot-v ${v.cls}" title="${v.label}"></span>` : ""}${isYT ? `<span class="pill yt mini-p">YT</span>` : ""}</div>
       </div>
       ${quick ? `<button class="round small ${mode === "queue" ? "accent" : "glass"}" data-act="${quick[0]}" data-id="${e.id}" aria-label="${quick[2]}">${quick[1]}</button>` : ""}
     </div>`;
@@ -464,7 +479,7 @@ function card(e, mode) {
         <div class="title" data-act="toggle" data-id="${e.id}">${esc(e.title)}</div>
         ${mode === "queue" && prio(e).why.length ? `<div class="why">${esc(prio(e).why.slice(0, 2).join(" · "))}</div>` : ""}
         <div class="meta">
-          <span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>
+          <span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>${progress(e) ? `<span class="prog">${progress(e)}</span>` : ""}
         </div>
         <div class="meta" style="margin-top:6px">
           ${isYT ? `<span class="pill yt">YouTube</span>` : ""}
@@ -489,6 +504,63 @@ function card(e, mode) {
     <div class="actions">${actions}</div>
   </div>`;
 }
+
+// quanto já ouviu (vem do Apple Podcasts pelo Mac)
+function progress(e) {
+  if (!e.playhead_sec || !e.duration_sec) return "";
+  const p = Math.min(99, Math.round((e.playhead_sec / e.duration_sec) * 100));
+  return `${p}% · faltam ${fmtDur(e.duration_sec - e.playhead_sec)}`;
+}
+
+// ---- deslizar: → manda pra lista padrão (Hoje), ← arquiva (pede motivo). Na Inbox: → mantém, ← descarta ----
+const SWIPE = {
+  queue: { right: ["list", () => `+ ${listName(state.swipeList)}`], left: ["archive", () => "Arquivar"] },
+  inbox: { right: ["keep", () => "Manter"], left: ["dismiss", () => "Descartar"] },
+  archive: { right: ["restore", () => "Restaurar"], left: null },
+};
+function listName(slug) { return (state.lists.find((l) => l.slug === slug)?.title || slug || "Hoje").replace("Fila · ", ""); }
+function card(e, mode) {
+  const sw = SWIPE[mode];
+  if (!sw) return cardInner(e, mode);
+  return `<div class="sw" data-sid="${e.id}" data-mode="${mode}">
+    <div class="sw-bg"><span class="sw-r">${sw.right ? esc(sw.right[1]()) : ""}</span><span class="sw-l">${sw.left ? esc(sw.left[1]()) : ""}</span></div>
+    ${cardInner(e, mode)}
+  </div>`;
+}
+(() => {
+  let s = null;
+  document.addEventListener("touchstart", (ev) => {
+    const w = ev.target.closest(".sw"); if (!w || ev.touches.length > 1 || ev.target.closest("button,a,select,input")) return;
+    s = { w, c: w.querySelector(".card"), x: ev.touches[0].clientX, y: ev.touches[0].clientY, dx: 0, lock: null };
+  }, { passive: true });
+  document.addEventListener("touchmove", (ev) => {
+    if (!s) return;
+    const dx = ev.touches[0].clientX - s.x, dy = ev.touches[0].clientY - s.y;
+    if (s.lock === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) s.lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    if (s.lock !== "x") return;
+    const sw = SWIPE[s.w.dataset.mode];
+    if ((dx > 0 && !sw.right) || (dx < 0 && !sw.left)) return;
+    ev.preventDefault();
+    s.dx = dx;
+    s.c.style.transition = "none";
+    s.c.style.transform = `translateX(${dx}px)`;
+    s.w.classList.toggle("go-r", dx > 0); s.w.classList.toggle("go-l", dx < 0);
+    s.w.classList.toggle("armed", Math.abs(dx) > 90);
+  }, { passive: false });
+  document.addEventListener("touchend", async () => {
+    if (!s) return;
+    const { w, c, dx } = s; s = null;
+    c.style.transition = "transform .25s cubic-bezier(.2,.9,.25,1)";
+    if (Math.abs(dx) < 90) { c.style.transform = ""; w.classList.remove("go-r", "go-l", "armed"); return; }
+    const sw = SWIPE[w.dataset.mode], [actName] = dx > 0 ? sw.right : sw.left, id = w.dataset.sid;
+    if (actName !== "archive") { c.style.transform = `translateX(${dx > 0 ? 110 : -110}%)`; w.style.opacity = ".4"; }
+    else { c.style.transform = ""; w.classList.remove("go-r", "go-l", "armed"); }
+    if (navigator.vibrate) navigator.vibrate(10);
+    const fake = { dataset: { act: actName, id, slug: state.swipeList }, disabled: false };
+    if (actName === "list" && inList(state.swipeList, id)) { toast(`Já está em ${listName(state.swipeList)}`); c.style.transform = ""; w.style.opacity = ""; w.classList.remove("go-r","go-l","armed"); return; }
+    await act(fake);
+  });
+})();
 
 function empty(icon, title, text, buttons = "") {
   return `<div class="empty"><div class="ico glass">${icon}</div><h2>${title}</h2><p>${text}</p>${buttons ? `<div class="row">${buttons}</div>` : ""}</div>`;
@@ -659,11 +731,65 @@ function viewQueue() {
     items.forEach((e) => (by[e.theme || "Outros"] ||= []).push(e));
     return Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([t, eps]) => group(t, `${eps.length} episódios · ${totalOf(eps)}`, eps)).join("") + archiveLink;
   }
-  const top = state.f.sort === "smart" && !state.f.theme && !state.f.show && items.length > 4 ? items.slice(0, 3) : [];
-  return (top.length ? `<div class="section-title" style="margin-top:6px">Ouça primeiro</div><div class="grid">${top.map((e) => card(e, "queue")).join("")}</div><div class="section-title">Resto da fila</div>` : "")
-    + `<div class="grid">${items.slice(top.length, state.limit || 60).map((e) => card(e, "queue")).join("")}</div>`
+  const showDay = state.f.sort === "smart" && !activeFilters().length && all.length > 4;
+  const day = showDay ? dayPlan(all) : null;
+  const dayIds = new Set(day ? day.eps.map((e) => e.id) : []);
+  const rest = items.filter((e) => !dayIds.has(e.id));
+  return (day ? dayPanel(day) + `<div class="section-title">Resto da fila</div>` : "")
+    + `<div class="grid">${rest.slice(0, state.limit || 60).map((e) => card(e, "queue")).join("")}</div>`
     + (items.length > (state.limit || 60) ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more">Mostrar mais (${items.length - (state.limit || 60)} restantes)</button></div>` : "")
     + archiveLink;
+}
+
+// ---------- Seu dia: seleção curada e equilibrada ----------
+// Regras: continua o que está pela metade; no máx. 1 por programa e 1 por assunto; no máx. 2 por tema;
+// mistura durações (1 longo no máx., pelo menos 1 curto); para perto do tempo-alvo. Muda a cada dia.
+const today = () => new Date().toISOString().slice(0, 10);
+function daySeed(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296); }
+function dayPlan(all) {
+  const target = (LS.get("dayTarget", 90)) * 60;
+  const skip = new Set(LS.get(`daySkip:${today()}`, []));
+  const rnd = daySeed(today() + skip.size);
+  const pool = all.filter((e) => !skip.has(e.id) && validity(e).cls !== "old" && e.platform !== "youtube")
+    .map((e) => ({ e, s: prio(e).score + rnd() * 0.25 + (e.status === "listening" ? 0.6 : 0) }))
+    .sort((a, b) => b.s - a.s).map((x) => x.e);
+  const picked = [], shows = new Set(), topics = new Set(), themes = {};
+  let total = 0, long = 0, short = 0;
+  const left = (e) => (e.playhead_sec ? Math.max(0, (e.duration_sec || 0) - e.playhead_sec) : e.duration_sec || 1800);
+  const ok = (e, relax) => {
+    const d = left(e), g = state._queueClusters?.map.get(e.id);
+    if (shows.has(e.show_title)) return false;
+    if (g && topics.has(g.label)) return false;
+    if ((themes[e.theme] || 0) >= (relax ? 3 : 2)) return false;
+    if (d > 75 * 60 && (long >= 1 || target < 100 * 60)) return false;
+    if (total + d > target * 1.15) return false;
+    return true;
+  };
+  const add = (e) => {
+    const d = left(e), g = state._queueClusters?.map.get(e.id);
+    picked.push(e); shows.add(e.show_title); if (g) topics.add(g.label);
+    themes[e.theme] = (themes[e.theme] || 0) + 1; total += d; if (d > 75 * 60) long++; if (d < 25 * 60) short++;
+  };
+  for (const relax of [false, true]) for (const e of pool) { if (total >= target * 0.9) break; if (!picked.includes(e) && ok(e, relax)) add(e); }
+  if (!short) { const s = pool.find((e) => !picked.includes(e) && left(e) < 25 * 60 && !shows.has(e.show_title)); if (s && total + left(s) <= target * 1.25) add(s); }
+  // ordem de escuta: em andamento primeiro, depois alterna temas, curto no meio
+  picked.sort((a, b) => (b.status === "listening") - (a.status === "listening"));
+  return { eps: picked, total, themes: Object.keys(themes).length, target };
+}
+function dayPanel(d) {
+  const t = LS.get("dayTarget", 90);
+  const opts = [[30, "30 min"], [60, "1h"], [90, "1h30"], [120, "2h"], [180, "3h"]];
+  const inHoje = d.eps.length && d.eps.every((e) => inList("hoje", e.id));
+  return `<div class="day glass">
+    <div class="day-h"><div><div class="gt">Seu dia</div><div class="sub">${d.eps.length} episódios · ${fmtLong(d.total)} · ${d.themes} temas</div></div>
+      <button class="round small glass" data-act="day-reroll" aria-label="Montar outra">${I.restore}</button></div>
+    <div class="filters" style="margin:0;padding:8px 0 4px">${opts.map(([v, l]) => `<button class="chip small ${t === v ? "on" : ""}" data-daytarget="${v}">${l}</button>`).join("")}</div>
+    <div class="day-list">${d.eps.map((e, i) => `<div class="li">
+      <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
+      <button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>`).join("")}</div>
+    <div class="row"><button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
+  </div>`;
 }
 
 function viewConnect() {
@@ -754,11 +880,14 @@ function viewSettings() {
   <div class="panel">
     <h3>Integrações</h3>
     <div class="li"><div class="t"><div class="a">Notion · 📻 Podcasts</div><div class="b">${!c.notion ? "Falta o NOTION_TOKEN no Supabase" : c.notion_synced_at ? "Sincroniza nos dois sentidos · " + ago(c.notion_synced_at).toLowerCase() : c.notion_importing ? "Importação pela metade" : "Conectado · histórico ainda não importado"}</div></div><span class="pill ${c.notion ? "fresh" : "old"}">${c.notion ? "Conectado" : "Desligado"}</span></div>
+    <div class="li"><div class="t"><div class="a">Apple Podcasts (via Mac)</div><div class="b">${c.apple_synced_at ? "Ouvidos, andamento, Salvos e programas seguidos · " + ago(c.apple_synced_at).toLowerCase() : "Ainda não sincronizado"}</div></div><span class="pill ${c.apple_synced_at ? "fresh" : "soon"}">${c.apple_synced_at ? "Ligado" : "Desligado"}</span></div>
     <div class="li"><div class="t"><div class="a">IA pra tema e Shelves</div><div class="b">${c.ai ? "Classifica cada episódio" : "Hoje usa o gênero da Apple"}</div></div><span class="pill ${c.ai ? "fresh" : "soon"}">${c.ai ? "Ligada" : "Básico"}</span></div>
     ${c.notion ? `<div class="row">${!c.notion_synced_at ? `<button class="btn primary" data-act="notion-import">${c.notion_importing ? "Continuar importação" : "Importar histórico do Notion"}</button>` : `<button class="btn" data-act="notion-import">Sincronizar agora</button>`}<button class="btn" data-act="shelves">Shelves</button></div><div class="hint" id="import-progress"></div>` : ""}  </div>
   <div class="panel">
     <h3>Aparência e acesso</h3>
     <div class="row"><select class="chip" id="theme-pick" style="flex:1"><option value="">Seguir o sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div>
+    <div class="hint">Deslizar pra direita na Fila manda pra:</div>
+    <div class="row"><select class="chip" id="swipe-pick" style="flex:1">${state.lists.map((l) => `<option value="${l.slug}" ${state.swipeList === l.slug ? "selected" : ""}>${esc(l.title)}</option>`).join("")}</select></div>
     <div class="row"><input type="password" id="token" value="${esc(LS.get("token", ""))}" placeholder="Token de acesso"><button class="btn primary" data-act="save-token">Salvar</button></div>
   </div>
   </div>`;
@@ -815,6 +944,23 @@ async function act(el) {
     if (a === "more-group") { state.groupOpen = { ...(state.groupOpen || {}), [el.dataset.g]: true }; return render(); }
     if (a === "open-add") return openSheet(true);
     if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "" }; LS.set("filters", state.f); return render(); }
+    if (a === "day-swap") { const k = `daySkip:${today()}`; LS.set(k, [...LS.get(k, []), id]); return render(); }
+    if (a === "day-reroll") {
+      const k = `daySkip:${today()}`; const cur = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening")).eps.map((e) => e.id);
+      LS.set(k, [...LS.get(k, []), ...cur]); return render();
+    }
+    if (a === "toggle-day") { state.group = "list"; state.open[id] = true; render(); document.querySelector(`[data-sid="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (a === "day-send") {
+      const d = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening"));
+      el.disabled = true; toast("Montando a Fila · Hoje…");
+      await api("/lists/hoje", { op: "clear" });
+      let n = 0;
+      for (const e of d.eps) {
+        try { const r = await api("/lists/hoje", { episode_id: e.id, op: "add" }); n++; if (r.episode) patchLocal(e.id, { audio_url: r.episode.audio_url }); } catch (_) { /* sem áudio: pula */ }
+      }
+      state.lists = await api("/lists"); render();
+      return toast(`${n} episódios na Fila · Hoje. Assine o feed na aba Watch.`);
+    }
     if (a === "open-filters") { $("#fsheet").innerHTML = filterSheet(); $("#fsheet").classList.add("show"); $("#scrim").classList.add("show"); return; }
     if (a === "close-filters") { closeFilters(); return; }
     if (a === "dense") { state.dense = !state.dense; LS.set("dense", state.dense); state.open = {}; return render(); }
@@ -904,6 +1050,8 @@ document.addEventListener("click", (ev) => {
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
   const t = ev.target.closest("[data-act]"); if (t && t.tagName !== "SELECT") { ev.preventDefault(); act(t); return; }
+  const dt = ev.target.closest("[data-daytarget]");
+  if (dt) { LS.set("dayTarget", Number(dt.dataset.daytarget)); return render(); }
   const ar = ev.target.closest("[data-areason]");
   if (ar) { state.archiveReason = ar.dataset.areason; state.limit = 60; return render(); }
   const st = ev.target.closest("[data-set]");
@@ -922,6 +1070,7 @@ document.addEventListener("change", async (ev) => {
   if (s.dataset.f) { state.f[s.dataset.f] = s.value; LS.set("filters", state.f); render(); }
   if (s.dataset.act === "theme") { patchLocal(s.dataset.id, { theme: s.value }); await api(`/episodes/${s.dataset.id}`, { theme: s.value }).catch((e) => toast(e.message)); render(); }
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
+  if (s.id === "swipe-pick") { state.swipeList = s.value; LS.set("swipeList", s.value); toast(`Deslizar → ${listName(s.value)}`); }
 });
 window.addEventListener("scroll", () => $("#hdr").classList.toggle("scrolled", scrollY > 8), { passive: true });
 function applyTheme() { const t = LS.get("theme", ""); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
