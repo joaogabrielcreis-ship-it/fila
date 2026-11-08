@@ -330,7 +330,7 @@ if (hashT) LS.set("token", hashT);
 const state = {
   tab: LS.get("tab", "queue"),
   episodes: [], lists: [], shows: [], config: {},
-  f: Object.assign({ theme: "", dur: "", show: "", age: "", sort: "smart", lang: "", shelf: "", topic: "" }, LS.get("filters", {})),
+  f: Object.assign({ theme: "", dur: "", show: "", age: "", sort: "smart", lang: "", shelf: "", topic: "", platform: "" }, LS.get("filters", {})),
   group: LS.get("group", "list"),
   dense: LS.get("dense", false),
   needToken: false,
@@ -447,11 +447,14 @@ const AGE = [["", "Validade"], ["fresh", "Frescos"], ["soon", "Vencendo"], ["old
 const KIND_LABEL = { news: "Notícia · 3 dias", tech: "Tech · 3 semanas", evergreen: "Não vence" };
 const LANG = { English: "Inglês", Portuguese: "Português", Spanish: "Espanhol" };
 
+const PLATFORMS = { apple: "Apple Podcasts", youtube: "YouTube", other: "Outros links" };
+const platformOf = (e) => (e.platform === "youtube" || /youtu\.?be/.test(e.url || "") ? "youtube" : e.platform === "apple" || /podcasts\.apple\.com/.test(e.url || e.apple_url || "") || e.audio_url ? "apple" : "other");
 function applyFilters(list, opt = {}) {
   const f = opt.skip ? { ...state.f, theme: "", shelf: "", topic: "" } : state.f;
   const out = list.filter((e) => {
     if (f.theme && e.theme !== f.theme) return false;
     if (f.shelf && !(e.shelves || []).includes(f.shelf)) return false;
+    if (f.platform && platformOf(e) !== f.platform) return false;
     if (f.topic && state.tab === "queue" && state._queueClusters?.map.get(e.id)?.label !== f.topic) return false;
     if (f.show && String(e.show_id) !== f.show) return false;
     if (f.lang && e.language !== f.lang) return false;
@@ -476,6 +479,7 @@ function activeFilters() {
   const f = state.f, out = [];
   if (f.theme) out.push(["theme", f.theme]);
   if (f.shelf) out.push(["shelf", "Shelf: " + f.shelf]);
+  if (f.platform) out.push(["platform", PLATFORMS[f.platform] || f.platform]);
   if (f.topic && state.tab === "queue") out.push(["topic", "Assunto: " + f.topic]);
   if (f.dur) out.push(["dur", DUR.find((d) => d[0] === f.dur)?.[1]]);
   if (f.age) out.push(["age", AGE.find((d) => d[0] === f.age)?.[1]]);
@@ -513,6 +517,7 @@ function filterSheet() {
     <div class="sheet-h"><h3>Filtros</h3><button class="btn quiet" data-act="clear-filters">Limpar</button></div>
     <div class="fs-scroll">
       <div class="fs-l">Tema</div>${chips("theme", [["", "Todos"], ...themes.map((t) => [t, t, count((e) => e.theme === t)])])}
+      ${(() => { const ps = Object.keys(PLATFORMS).map((k) => [k, PLATFORMS[k], count((e) => platformOf(e) === k)]).filter(([, , n]) => n); return ps.length > 1 ? `<div class="fs-l">Onde ouvir</div>${chips("platform", [["", "Todos"], ...ps])}` : ""; })()}
       <div class="fs-l">Duração</div>${chips("dur", DUR.map(([v, l]) => [v, v ? l : "Qualquer"]))}
       <div class="fs-l">Validade</div>${chips("age", AGE.map(([v, l]) => [v, v ? l : "Qualquer"]))}
       ${langs.length > 1 ? `<div class="fs-l">Idioma</div>${chips("lang", [["", "Todos"], ...langs.map((l) => [l, LANG[l] || l])])}` : ""}
@@ -990,7 +995,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-08 · 6</div>
+    <div class="hint">Versão 2026-11-08 · 7</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1275,7 +1280,7 @@ async function act(el) {
     if (a === "explore-all") { state.exploreAll = { ...(state.exploreAll || {}), [el.dataset.k]: true }; return render(); }
     if (a === "more-group") { state.groupOpen = { ...(state.groupOpen || {}), [el.dataset.g]: true }; return render(); }
     if (a === "open-add") return openSheet(true);
-    if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "", shelf: "", topic: "" }; LS.set("filters", state.f); return render(); }
+    if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "", shelf: "", topic: "", platform: "" }; LS.set("filters", state.f); return render(); }
     if (a === "day-swap") { const k = `daySkip:${today()}`; LS.set(k, [...LS.get(k, []), id]); return render(); }
     if (a === "day-reroll") {
       const k = `daySkip:${today()}`; const cur = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening")).eps.map((e) => e.id);
