@@ -243,6 +243,13 @@ select.chip.time{height:30px;font-size:13px;padding:0 24px 0 10px}
 .li .t .b{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .li img{width:52px;height:52px;border-radius:11px;object-fit:cover;background:var(--fill)}
 .num{width:26px;text-align:center;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.player{position:fixed;z-index:29;left:50%;transform:translateX(-50%);bottom:calc(max(14px, env(safe-area-inset-bottom) - 6px) + 76px);width:min(calc(100% - 20px),560px);border-radius:22px;padding:10px 10px 10px 10px;display:flex;align-items:center;gap:10px;overflow:hidden}
+.player img{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--fill)}
+.player .t{flex:1;min-width:0}.player .a{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player .b{font-size:13px;color:var(--muted)}
+.player .mini{font-size:12px;font-weight:700}.player .pl-main{width:42px;height:42px;background:var(--accent);color:var(--on-accent)}
+.pl-bar{position:absolute;left:0;right:0;top:0;height:3px;background:var(--fill)}.pl-bar i{display:block;height:100%;background:var(--accent)}
+body.has-player main{padding-bottom:90px}
+.mini.play{color:var(--accent);text-decoration:none;margin-right:6px}
 .mini{width:36px;height:36px;border-radius:50%;border:0;background:var(--fill);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .mini:disabled{opacity:.3}
 .mini svg.i{width:17px;height:17px}
@@ -973,19 +980,75 @@ function dayPlan(all) {
   picked.sort((a, b) => recentListening(b) - recentListening(a));
   return { eps: picked, total, themes: Object.keys(themes).length, target };
 }
+// ---------- Tocar: abre o episódio no Podcasts/YouTube (mantém o andamento sincronizado com a Apple);
+// sem link do episódio, toca aqui mesmo no player do app.
+function epLink(e) {
+  const u = e.url || e.apple_url || "";
+  if (e.platform === "youtube" || /youtu\.?be/.test(u)) return u;
+  if (/podcasts\.apple\.com\/.*[?&]i=\d+/.test(u)) return u;
+  return e.apple_id && e.show_id ? `https://podcasts.apple.com/br/podcast/id${e.show_id}?i=${e.apple_id}` : null;
+}
+function playBtn(e) {
+  const link = epLink(e);
+  if (link) return `<a class="mini play" href="${esc(link)}" target="_blank" rel="noopener" aria-label="Ouvir">${I.play}</a>`;
+  if (e.audio_url) return `<button class="mini play" data-act="play" data-id="${e.id}" aria-label="Ouvir aqui">${I.play}</button>`;
+  return "";
+}
+const player = { audio: null, ep: null, queue: [] };
+function playerSave() { const a = player.audio; if (a && player.ep) LS.set(`pos:${player.ep.id}`, Math.floor(a.currentTime)); }
+async function playHere(ep, queue = []) {
+  if (!ep.audio_url) {
+    // episódio vindo do Notion: o servidor descobre o áudio (via lista Hoje) e devolve; se não estava na lista, sai de novo
+    const was = inList("hoje", ep.id);
+    const r = await api(`/lists/hoje`, { episode_id: ep.id, op: "add" }).catch(() => null);
+    if (r?.episode?.audio_url) { ep.audio_url = r.episode.audio_url; if (!was) await api(`/lists/hoje`, { episode_id: ep.id, op: "remove" }).catch(() => {}); }
+  }
+  if (!ep.audio_url) return toast("Esse episódio não tem áudio direto. Abra no Podcasts.");
+  playerSave();
+  if (!player.audio) {
+    player.audio = new Audio(); player.audio.preload = "auto";
+    player.audio.addEventListener("timeupdate", () => { drawPlayer(); if (Math.floor(player.audio.currentTime) % 10 === 0) playerSave(); });
+    player.audio.addEventListener("play", drawPlayer); player.audio.addEventListener("pause", () => { playerSave(); drawPlayer(); });
+    player.audio.addEventListener("ended", () => { LS.set(`pos:${player.ep.id}`, 0); const next = player.queue.shift(); if (next) playHere(next, player.queue); else drawPlayer(); });
+  }
+  player.ep = ep; player.queue = queue;
+  player.audio.src = ep.audio_url;
+  const pos = LS.get(`pos:${ep.id}`, 0) || ep.playhead_sec || 0;
+  player.audio.addEventListener("loadedmetadata", () => { if (pos > 5) player.audio.currentTime = pos; }, { once: true });
+  player.audio.play().catch(() => {});
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: ep.title, artist: ep.show_title || "", artwork: ep.artwork ? [{ src: ep.artwork, sizes: "600x600" }] : [] });
+    navigator.mediaSession.setActionHandler("seekbackward", () => (player.audio.currentTime -= 15));
+    navigator.mediaSession.setActionHandler("seekforward", () => (player.audio.currentTime += 30));
+    navigator.mediaSession.setActionHandler("nexttrack", queue.length ? () => { const n = player.queue.shift(); if (n) playHere(n, player.queue); } : null);
+  }
+  drawPlayer();
+}
+function drawPlayer() {
+  let el = document.getElementById("player");
+  if (!player.ep) { el?.remove(); document.body.classList.remove("has-player"); return; }
+  if (!el) { el = document.createElement("div"); el.id = "player"; el.className = "player glass"; document.body.appendChild(el); document.body.classList.add("has-player"); }
+  const a = player.audio, dur = a.duration || player.ep.duration_sec || 0, cur = a.currentTime || 0;
+  el.innerHTML = `<div class="pl-bar"><i style="width:${dur ? (cur / dur) * 100 : 0}%"></i></div>
+    <img src="${esc(player.ep.artwork || "")}" alt="">
+    <div class="t"><div class="a">${esc(player.ep.title)}</div><div class="b">${fmtDur(Math.max(0, dur - cur))} restantes${player.queue.length ? ` · depois: ${player.queue.length}` : ""}</div></div>
+    <button class="mini" data-act="pl-back" aria-label="Voltar 15s">−15</button>
+    <button class="mini pl-main" data-act="pl-toggle" aria-label="Tocar ou pausar">${a.paused ? I.play : `<svg class="i" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`}</button>
+    <button class="mini" data-act="pl-close" aria-label="Fechar">${I.x}</button>`;
+}
 function dayPanel(d) {
   const t = LS.get("dayTarget", 90);
   const opts = [[30, "30 min"], [60, "1h"], [90, "1h30"], [120, "2h"], [180, "3h"]];
   const inHoje = d.eps.length && d.eps.every((e) => inList("hoje", e.id));
   return `<div class="day glass">
-    <div class="day-h"><div><div class="gt">Seu dia</div><div class="sub">${d.eps.length} episódios · ${fmtLong(d.total)} · ${d.themes} temas</div></div>
+    <div class="day-h"><div><div class="gt">Seu dia</div><div class="sub">${d.eps.length} episódio${d.eps.length === 1 ? "" : "s"} · ${fmtLong(d.total)} · ${d.themes} tema${d.themes === 1 ? "" : "s"}</div></div>
       <button class="round small glass" data-act="day-reroll" aria-label="Montar outra">${I.restore}</button></div>
     <div class="filters" style="margin:0;padding:8px 0 4px">${opts.map(([v, l]) => `<button class="chip small ${t === v ? "on" : ""}" data-daytarget="${v}">${l}</button>`).join("")}</div>
     <div class="day-list">${d.eps.map((e, i) => `<div class="li">
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
-      <button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>`).join("")}</div>
-    <div class="row"><button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
+      ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>`).join("")}</div>
+    <div class="row"><button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button><button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
   </div>`;
 }
 
@@ -995,7 +1058,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-08 · 7</div>
+    <div class="hint">Versão 2026-11-08 · 8</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1256,6 +1319,14 @@ async function act(el) {
       await api("/shows", { id: Number(id), favorite: s.favorite });
       return toast(s.favorite ? `★ ${s.title}: vai avisar quando sair episódio` : `${s.title} saiu dos favoritos`);
     }
+    if (a === "play") { const e = state.episodes.find((x) => x.id === id); return e && playHere(e); }
+    if (a === "play-seq") {
+      const d = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening"));
+      const [first, ...rest] = d.eps; return first && playHere(first, rest);
+    }
+    if (a === "pl-toggle") { const au = player.audio; au.paused ? au.play() : au.pause(); return; }
+    if (a === "pl-back") { player.audio.currentTime -= 15; return; }
+    if (a === "pl-close") { playerSave(); player.audio.pause(); player.ep = null; player.queue = []; return drawPlayer(); }
     if (a === "reload") { state.loadError = null; render(); return load(); }
     if (a === "al-toggle") {
       const k = el.dataset.k; state.autoLists[k] = !state.autoLists[k]; render();
