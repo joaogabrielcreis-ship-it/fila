@@ -102,7 +102,7 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .card{background:var(--card);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:.5px solid var(--glass-edge);box-shadow:var(--hi),0 1px 3px rgba(0,0,0,.04);border-radius:24px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .card-top{display:grid;grid-template-columns:80px 1fr;gap:14px;align-items:start}
 .art{width:80px;height:80px;border-radius:16px;object-fit:cover;background:var(--fill);box-shadow:0 4px 14px rgba(0,0,0,.14)}
-.show{font-size:13px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .show{font-size:13px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .title{font-size:17px;font-weight:600;line-height:1.28;margin:3px 0 6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
 .meta{display:flex;flex-wrap:wrap;gap:6px;font-size:14px;color:var(--muted);align-items:center}
 .pill{border-radius:8px;padding:2px 8px;font-size:13px;font-weight:600;background:var(--fill);color:var(--ink2)}
@@ -141,6 +141,10 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .dot-v.fresh{background:var(--ok)}.dot-v.soon{background:var(--warn)}.dot-v.old{background:var(--bad)}
 .mini-p{font-size:10px;padding:1px 5px}
 .grid.densegrid{gap:8px}
+.reasons{display:flex;flex-direction:column;gap:8px}
+.reason-b{text-align:left;border:0;background:var(--fill);border-radius:14px;padding:13px 16px;font-size:16px;font-weight:500;color:var(--ink);cursor:pointer}
+.reason-b:active{background:var(--accent-soft)}
+.pill.reason{background:var(--accent-soft);color:var(--accent)}
 .archive-link{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 4px;padding:14px 16px;border-radius:20px;text-align:left;cursor:pointer;color:var(--ink);font-size:16px}
 .archive-link span{flex:1}
 .archive-link small{color:var(--muted);font-size:13px}
@@ -435,7 +439,7 @@ function card(e, mode) {
     done: e.notion_page_id
       ? `<div class="scroll"><span class="hint" style="margin:0">Ouvido ${ago(e.done_at).toLowerCase()}</span></div><a class="btn small" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank">${I.ext}Notion</a>`
       : `<div class="scroll"><span class="hint" style="margin:0">${esc(e.notion_error ? (/NOTION_TOKEN/.test(e.notion_error) ? "Notion ainda não conectado" : "Falhou ao enviar pro Notion") : "Ouvido " + ago(e.done_at).toLowerCase())}</span></div><button class="btn small" data-act="notion" data-id="${e.id}">Enviar pro Notion</button>`,
-    archive: `<div class="scroll"><span class="hint" style="margin:0">${e.archive_reason === "expired" ? "Venceu" : "Arquivado"} ${ago(e.archived_at).toLowerCase()}</span></div>
+    archive: `<div class="scroll"><span class="pill reason">${esc(reasonLabel(e.archive_reason))}</span><span class="hint" style="margin:0 0 0 6px;align-self:center">${ago(e.archived_at).toLowerCase()}</span></div>
             <button class="btn small" data-act="restore" data-id="${e.id}">Restaurar</button>
             <button class="btn small primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
   }[mode];
@@ -516,10 +520,43 @@ function suggestions(n = 10, title = "") {
   </div>`;
 }
 
+// Motivos de arquivar: ficam salvos (archive_reason) pra entender o que te interessa e o que não
+const REASONS = [
+  ["timing", "Perdeu o timing"],
+  ["not_interested", "Não me interessa mais"],
+  ["already_know", "Já sei sobre o assunto"],
+  ["covered", "Ouvi outro sobre o mesmo assunto"],
+  ["too_long", "Longo demais"],
+  ["show", "Não curto esse programa"],
+  ["guest", "Não curto o convidado"],
+];
+function reasonLabel(r) {
+  if (!r) return "Arquivado";
+  if (r === "expired") return "Venceu";
+  if (r === "manual") return "Arquivado";
+  return REASONS.find((x) => x[0] === r)?.[1] || r;
+}
+function reasonSheet(e) {
+  return `
+    <div class="sheet-h"><h3>Por que arquivar?</h3><button class="btn quiet" data-act="close-filters">Cancelar</button></div>
+    <div class="hint" style="margin:2px 0 10px">${esc(e?.title || "")}</div>
+    <div class="reasons">
+      ${REASONS.map(([k, l]) => `<button class="reason-b" data-act="archive-reason" data-reason="${k}" data-id="${e.id}">${esc(l)}</button>`).join("")}
+      <button class="reason-b" data-act="reason-other">Outro motivo…</button>
+    </div>
+    <div class="row" id="reason-other" style="display:none"><input type="text" id="reason-text" placeholder="Escreva o motivo"><button class="btn primary" data-act="archive-reason" data-reason="custom" data-id="${e.id}">Arquivar</button></div>`;
+}
+
 function viewArchive() {
-  const all = state.archive || [];
+  const base = state.archive || [];
+  const counts = {};
+  base.forEach((e) => { const k = e.archive_reason || "manual"; counts[k] = (counts[k] || 0) + 1; });
+  const rf = state.archiveReason || "";
+  const all = rf ? base.filter((e) => (e.archive_reason || "manual") === rf) : base;
   const items = applyFilters(all);
-  $("#filterbar").innerHTML = `<div class="toolbar"><button class="chip" data-go="queue">${I.back}Fila</button><div style="flex:1"></div></div>` + filterBar(all);
+  const reasonChips = Object.keys(counts).length > 1 || rf
+    ? `<div class="filters" style="padding-top:6px"><button class="chip small ${!rf ? "on" : ""}" data-areason="">Todos ${base.length}</button>${Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip small ${rf === k ? "on" : ""}" data-areason="${esc(k)}">${esc(reasonLabel(k))} <span class="n">${n}</span></button>`).join("")}</div>` : "";
+  $("#filterbar").innerHTML = `<div class="toolbar"><button class="chip" data-go="queue">${I.back}Fila</button><div style="flex:1"></div></div>` + filterBar(all) + reasonChips;
   setSub(state.archive ? `${all.length.toLocaleString("pt-BR")} episódios · ${fmtLong(all.reduce((s, e) => s + (e.duration_sec || 0), 0))}` : "Carregando…");
   if (!state.archive) { loadArchive(); return `<div class="empty"><p>Carregando o arquivo…</p></div>`; }
   if (!all.length) return empty(I.archive, "Arquivo vazio", "Episódios que vencem saem da Fila e vêm pra cá. Ficam guardados como histórico do que te interessou.");
@@ -740,7 +777,7 @@ function render() {
   $("#main").querySelectorAll(".grid").forEach((g) => g.classList.toggle("densegrid", state.dense));
   const db = $("#btn-dense"); db.innerHTML = state.dense ? I.expand : I.compact; db.title = state.dense ? "Visão normal" : "Visão compacta";
   db.style.display = ["queue", "inbox", "archive"].includes(state.tab) ? "" : "none";
-  if ($("#fsheet").classList.contains("show")) $("#fsheet").innerHTML = filterSheet();
+  if ($("#fsheet").classList.contains("show") && $("#fsheet").querySelector(".fs-scroll")) $("#fsheet").innerHTML = filterSheet();
   const tp = $("#theme-pick"); if (tp) tp.value = LS.get("theme", "");
 }
 
@@ -782,11 +819,20 @@ async function act(el) {
     if (a === "close-filters") { closeFilters(); return; }
     if (a === "dense") { state.dense = !state.dense; LS.set("dense", state.dense); state.open = {}; return render(); }
     if (a === "archive") {
+      const e = state.episodes.find((x) => x.id === id);
+      $("#fsheet").innerHTML = reasonSheet(e); $("#fsheet").classList.add("show"); $("#scrim").classList.add("show");
+      return;
+    }
+    if (a === "reason-other") { $("#reason-other").style.display = "flex"; $("#reason-text").focus(); return; }
+    if (a === "archive-reason") {
+      let reason = el.dataset.reason;
+      if (reason === "custom") { reason = $("#reason-text").value.trim(); if (!reason) return toast("Escreva o motivo"); }
+      closeFilters();
       const e = state.episodes.find((x) => x.id === id); patchLocal(id, { status: "archived" }); render();
-      await api(`/episodes/${id}`, { status: "archived" });
+      await api(`/episodes/${id}`, { status: "archived", reason });
       if (state.stats) state.stats.archived = (state.stats.archived || 0) + 1;
-      if (state.archive && e) state.archive.unshift({ ...e, status: "archived", archived_at: new Date().toISOString(), archive_reason: "manual" });
-      return toast("Arquivado");
+      if (state.archive && e) state.archive.unshift({ ...e, status: "archived", archived_at: new Date().toISOString(), archive_reason: reason });
+      return toast(`Arquivado · ${reasonLabel(reason)}`);
     }
     if (a === "restore") {
       const r = await api(`/episodes/${id}`, { restore: true });
@@ -858,6 +904,8 @@ document.addEventListener("click", (ev) => {
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
   const t = ev.target.closest("[data-act]"); if (t && t.tagName !== "SELECT") { ev.preventDefault(); act(t); return; }
+  const ar = ev.target.closest("[data-areason]");
+  if (ar) { state.archiveReason = ar.dataset.areason; state.limit = 60; return render(); }
   const st = ev.target.closest("[data-set]");
   if (st) { state.f[st.dataset.set] = st.dataset.v; LS.set("filters", state.f); state.limit = 60; return render(); }
   const cl = ev.target.closest("[data-clear]");
