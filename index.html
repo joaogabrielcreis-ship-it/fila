@@ -381,14 +381,39 @@ async function api(path, body) {
 }
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
 
-async function load() {
+// Abre na hora com o que foi carregado da última vez (cópia local), e atualiza por trás.
+// Se o servidor falhar (ex.: reiniciando), tenta de novo sozinho e nunca troca seus dados por uma tela vazia.
+const SNAP = "fila-snap-v1";
+async function snapRead() { try { const c = await caches.open(SNAP); const r = await c.match("/snap"); return r ? await r.json() : null; } catch { return null; } }
+async function snapWrite(d) { try { const c = await caches.open(SNAP); await c.put("/snap", new Response(JSON.stringify(d), { headers: { "content-type": "application/json" } })); } catch {} }
+let _loading = null, _lastLoad = 0;
+async function load(opts = {}) {
   if (!LS.get("token", "")) { state.needToken = true; render(); return; }
   state.needToken = false;
-  try {
-    const [eps, lists, shows, config, stats] = await Promise.all([api("/episodes"), api("/lists"), api("/shows"), api("/config"), api("/stats")]);
-    Object.assign(state, { episodes: eps, lists, shows, config, stats, loaded: true });
-  } catch (e) { toast(e.message); }
-  render();
+  if (!state.loaded) {
+    const snap = await snapRead();
+    if (snap?.episodes?.length) { Object.assign(state, snap, { loaded: true, fromSnap: snap.at }); render(); }
+  }
+  if (_loading) return _loading;
+  _loading = (async () => {
+    for (let i = 0; i < 4; i++) {
+      try {
+        const [eps, lists, shows, config, stats] = await Promise.all([api("/episodes"), api("/lists"), api("/shows"), api("/config"), api("/stats")]);
+        if (!Array.isArray(eps)) throw new Error("Resposta inválida do servidor");
+        Object.assign(state, { episodes: eps, lists, shows, config, stats, loaded: true, loadError: null, fromSnap: null });
+        _lastLoad = Date.now(); render();
+        snapWrite({ episodes: eps, lists, shows, config, stats, at: new Date().toISOString() });
+        return;
+      } catch (e) {
+        if (state.needToken) return;
+        state.loadError = e.message;
+        await new Promise((r) => setTimeout(r, [1500, 4000, 8000][i] || 0));
+      }
+    }
+    if (state.loaded) toast(`Servidor não respondeu. Mostrando seus dados de ${state.fromSnap ? new Date(state.fromSnap).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "antes"}`);
+    render();
+  })().finally(() => { _loading = null; });
+  return _loading;
 }
 
 // ---------- helpers ----------
@@ -965,7 +990,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-08 · 4</div>
+    <div class="hint">Versão 2026-11-08 · 6</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -997,7 +1022,17 @@ function viewDone() {
     + (done.length > shown.length ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more-done">Mostrar mais</button></div>` : "");
 }
 
+async function loadAutoLists() { try { state.autoLists = await api("/lists/auto"); } catch (_) { state.autoLists = {}; } render(); }
+function autoListRow(slug) {
+  const p = state.autoLists; if (!p || !(slug in p)) return "";
+  const desc = slug === "hoje"
+    ? `Toda manhã (${esc(p.hoje_at)}) monta sozinha: continua o que você deixou pela metade e completa com o que mais combina com você, variando programa e tema, até <select class="chip time" data-al="hoje_min">${[45, 60, 90, 120, 180].map((v) => `<option value="${v}" ${Number(p.hoje_min) === v ? "selected" : ""}>${v} min</option>`).join("")}</select>`
+    : "Sempre atualizada: as notícias das últimas 36h dos programas que você segue, uma por programa, os que você mais ouve primeiro.";
+  return `<div class="swr"><div class="t"><b>Montar sozinha</b><small>${desc}</small></div><button class="tg ${p[slug] ? "on" : ""}" data-act="al-toggle" data-k="${slug}" aria-label="Montar sozinha"></button></div>
+    ${p[slug] && slug === "hoje" ? `<div class="row"><button class="btn small" data-act="al-run">Remontar agora</button></div>` : ""}`;
+}
 function viewWatch() {
+  if (!state.autoLists) loadAutoLists();
   $("#filterbar").innerHTML = "";
   setSub("Cada lista vira um programa no Apple Podcasts");
   const byId = Object.fromEntries(state.episodes.map((e) => [e.id, e]));
@@ -1010,6 +1045,7 @@ function viewWatch() {
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
         <h3>${esc(name)}</h3><span class="sub">${items.length} · ${total ? fmtDur(total * 60) : "vazia"}</span>
       </div>
+      ${autoListRow(l.slug)}
       <div style="margin-top:6px">
       ${items.map((e, i) => `<div class="li">
         <span class="num">${i + 1}</span>
@@ -1158,6 +1194,13 @@ function render() {
   const nInbox = state.episodes.filter((e) => e.status === "inbox").length;
   $("#cnt-inbox").innerHTML = nInbox ? `<span class="dot">${nInbox > 99 ? "99+" : nInbox}</span>` : "";
   if (state.needToken) { $("#h-title").textContent = "Conectar"; $("#main").innerHTML = viewConnect(); return; }
+  if (!state.loaded && state.tab !== "settings") {
+    $("#filterbar").innerHTML = "";
+    $("#main").innerHTML = state.loadError && !_loading
+      ? empty(I.inbox, "Não consegui falar com o servidor", "Seus episódios estão guardados. Confira a internet e tente de novo.", `<button class="btn primary" data-act="reload">Tentar de novo</button>`)
+      : `<div class="empty"><p>Carregando seus episódios…</p></div>`;
+    return;
+  }
   $("#main").innerHTML = ({ inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings, archive: viewArchive }[state.tab] || viewQueue)();
   $("#main").querySelectorAll(".grid").forEach((g) => g.classList.toggle("densegrid", state.dense));
   const db = $("#btn-dense"); db.innerHTML = state.dense ? I.expand : I.compact; db.title = state.dense ? "Visão normal" : "Visão compacta";
@@ -1208,6 +1251,13 @@ async function act(el) {
       await api("/shows", { id: Number(id), favorite: s.favorite });
       return toast(s.favorite ? `★ ${s.title}: vai avisar quando sair episódio` : `${s.title} saiu dos favoritos`);
     }
+    if (a === "reload") { state.loadError = null; render(); return load(); }
+    if (a === "al-toggle") {
+      const k = el.dataset.k; state.autoLists[k] = !state.autoLists[k]; render();
+      await api("/lists/auto", { [k]: state.autoLists[k] }); state.lists = await api("/lists"); render();
+      return toast(state.autoLists[k] ? `${listName(k)} vai se montar sozinha` : `${listName(k)} volta a ser manual`);
+    }
+    if (a === "al-run") { el.disabled = true; const r = await api("/lists/auto", { run: true }); state.lists = await api("/lists"); render(); return toast(r.hoje ? `Hoje: ${r.hoje.n} episódios · ${r.hoje.min} min` : "Pronto"); }
     if (a === "auto-toggle") { state.auto.enabled = !state.auto.enabled; render(); await api("/auto", { enabled: state.auto.enabled }); return toast(state.auto.enabled ? "Fila automática ligada: vale pros próximos episódios" : "Fila automática desligada"); }
     if (a === "auto-level") { state.auto.level = el.dataset.k; render(); await api("/auto", { level: el.dataset.k }); return; }
     if (a === "auto-apply") {
@@ -1355,6 +1405,7 @@ document.addEventListener("change", async (ev) => {
   const s = ev.target;
   if (s.dataset.f) { state.f[s.dataset.f] = s.value; LS.set("filters", state.f); render(); }
   if (s.dataset.act === "theme") { patchLocal(s.dataset.id, { theme: s.value }); await api(`/episodes/${s.dataset.id}`, { theme: s.value }).catch((e) => toast(e.message)); render(); }
+  if (s.dataset.al) { state.autoLists[s.dataset.al] = Number(s.value); await api("/lists/auto", { [s.dataset.al]: Number(s.value) }).catch((e) => toast(e.message)); }
   if (s.dataset.auto) { state.auto[s.dataset.auto] = Number(s.value); await api("/auto", { [s.dataset.auto]: Number(s.value) }).catch((e) => toast(e.message)); }
   if (s.dataset.np) { const v = s.dataset.np === "inbox_max" ? Number(s.value) : s.value; state.notify[s.dataset.np] = v; await api("/notify/prefs", { [s.dataset.np]: v }).catch((e) => toast(e.message)); toast(`Horário: ${s.value}`); }
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
@@ -1378,7 +1429,7 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
   navigator.serviceWorker.addEventListener("message", (ev) => { if (ev.data?.go && applyGo(ev.data.go)) { window.scrollTo(0, 0); render(); } });
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - _lastLoad > 60000) load(); });
 render();
 load();
 </script>
