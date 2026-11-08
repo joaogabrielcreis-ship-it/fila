@@ -111,6 +111,40 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .pill.old{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
 .pill.ever{color:var(--ever);background:color-mix(in srgb,var(--ever) 13%,transparent)}
 .pill.yt{color:#fff;background:#ff0033}
+/* ---------- barra única, folha de filtros, compacto, arquivo ---------- */
+.toolbar{display:flex;gap:8px;align-items:center;padding:10px 0 2px}
+.toolbar select.chip{max-width:34%;min-width:0;flex:0 1 auto;text-overflow:ellipsis}
+.toolbar .chip{padding-left:11px;padding-right:11px;flex-shrink:0}
+.toolbar select.chip{padding-right:26px}
+.seg-b{width:32px}
+.chip.small{height:30px;font-size:13px;padding:0 10px}
+.chip .n{opacity:.6;font-weight:500;margin-left:2px}
+.chip svg.i{width:16px;height:16px}
+.seg{display:flex;border-radius:18px;padding:3px;gap:2px}
+.seg-b{width:36px;height:30px;border:0;background:none;border-radius:14px;color:var(--ink2);display:grid;place-items:center;cursor:pointer}
+.seg-b svg.i{width:18px;height:18px}
+.seg-b.on{background:var(--accent);color:var(--on-accent)}
+.round.small{width:36px;height:36px}
+.round.small svg.i{width:18px;height:18px}
+#fsheet{max-height:80vh;display:flex;flex-direction:column}
+.sheet-h{display:flex;justify-content:space-between;align-items:center}
+.fs-scroll{overflow-y:auto;margin:6px -4px 0;padding:0 4px}
+.fs-l{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px}
+.wrap{display:flex;flex-wrap:wrap;gap:8px}
+.card.dense{flex-direction:row;align-items:center;gap:12px;padding:10px 10px 10px 10px;border-radius:18px}
+.card.dense .art{width:52px;height:52px;border-radius:11px;flex:none}
+.dense-t{flex:1;min-width:0;cursor:pointer}
+.card.dense .title{font-size:15px;margin:0 0 3px;-webkit-line-clamp:2}
+.card.dense .meta{font-size:13px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+.show-s{overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
+.dot-v{width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
+.dot-v.fresh{background:var(--ok)}.dot-v.soon{background:var(--warn)}.dot-v.old{background:var(--bad)}
+.mini-p{font-size:10px;padding:1px 5px}
+.grid.densegrid{gap:8px}
+.archive-link{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 4px;padding:14px 16px;border-radius:20px;text-align:left;cursor:pointer;color:var(--ink);font-size:16px}
+.archive-link span{flex:1}
+.archive-link small{color:var(--muted);font-size:13px}
+.archive-link svg.i{color:var(--muted)}
 .why{font-size:13px;font-weight:600;color:var(--accent);margin:-2px 0 6px;line-height:1.3}
 .group{margin:8px 0 22px}
 .group-h{display:flex;justify-content:space-between;align-items:flex-end;margin:0 4px 10px}
@@ -186,7 +220,7 @@ details summary::-webkit-details-marker{display:none}
   <div class="top">
     <div style="min-width:0"><h1 id="h-title">Fila</h1><div class="sub" id="h-sub">&nbsp;</div></div>
     <div class="hbtns">
-      <button class="round glass" id="btn-refresh" aria-label="Atualizar"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+      <button class="round glass" id="btn-dense" data-act="dense" aria-label="Alternar visão compacta"></button>
       <button class="round accent" id="btn-add" aria-label="Mandar episódio"><svg class="i" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
   </div>
@@ -209,6 +243,7 @@ details summary::-webkit-details-marker{display:none}
   <div class="row"><input type="url" id="add-url" placeholder="https://podcasts.apple.com/…?i=…" autocomplete="off"></div>
   <div class="row"><button class="btn quiet" id="sheet-cancel">Cancelar</button><div style="flex:1"></div><button class="btn" id="sheet-paste">Colar</button><button class="btn primary" id="sheet-send">Mandar</button></div>
 </div>
+<div class="sheet glass" id="fsheet"></div>
 <div class="toast glass" id="toast"></div>
 
 <script>
@@ -226,6 +261,7 @@ const state = {
   episodes: [], lists: [], shows: [], config: {},
   f: Object.assign({ theme: "", dur: "", show: "", age: "", sort: "smart", lang: "" }, LS.get("filters", {})),
   group: LS.get("group", "list"),
+  dense: LS.get("dense", false),
   needToken: false,
   open: {}, loaded: false,
 };
@@ -244,6 +280,16 @@ const I = {
   done: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg>',
   copy: '<svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  filter: '<svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
+  rows: '<svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+  topics: '<svg class="i" viewBox="0 0 24 24"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><circle cx="12" cy="17" r="3"/></svg>',
+  grid: '<svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+  compact: '<svg class="i" viewBox="0 0 24 24"><path d="M4 5h16M4 9.5h16M4 14h16M4 18.5h16"/></svg>',
+  expand: '<svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>',
+  restore: '<svg class="i" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 4v5h5"/></svg>',
+  archive: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></svg>',
+  back: '<svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
 };
 
 async function api(path, body) {
@@ -280,6 +326,13 @@ function ago(d) {
 }
 const mins = (s) => (s ? Math.round(s / 60) : null);
 const fmtDur = (s) => { const m = mins(s); if (m == null) return "—"; return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${m} min`; };
+// total longo: "61 dias 4h 12min"
+function fmtLong(sec) {
+  const t = Math.round((sec || 0) / 60), d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
+  if (d) return `${d.toLocaleString("pt-BR")} ${d === 1 ? "dia" : "dias"} ${h}h ${m}min`;
+  if (h) return `${h}h ${m}min`;
+  return `${m} min`;
+}
 const fmtHours = (m) => (m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1).replace(".", ",")}<small>h</small>` : `${m}<small>min</small>`);
 function validity(e) {
   if (e.kind === "evergreen" || !e.expires_at) return { cls: "ever", label: "Não vence" };
@@ -314,26 +367,53 @@ function applyFilters(list) {
   return out.sort(by);
 }
 
-function filterBar(items) {
+// Barra única: ordem · filtros (folha) · visão · densidade. Filtros ativos aparecem como pílulas removíveis.
+const SORTS = [["smart", "Recomendado"], ["pub_desc", "Mais novos"], ["pub_asc", "Mais antigos"], ["expiring", "Vencendo antes"], ["dur_asc", "Mais curtos"], ["dur_desc", "Mais longos"]];
+function activeFilters() {
+  const f = state.f, out = [];
+  if (f.theme) out.push(["theme", f.theme]);
+  if (f.dur) out.push(["dur", DUR.find((d) => d[0] === f.dur)?.[1]]);
+  if (f.age) out.push(["age", AGE.find((d) => d[0] === f.age)?.[1]]);
+  if (f.show) out.push(["show", state._showNames?.[f.show] || "Programa"]);
+  if (f.lang) out.push(["lang", LANG[f.lang] || f.lang]);
+  return out;
+}
+function filterBar(items, opts = {}) {
   if (!items.length) return "";
+  state._filterItems = items;
+  state._showNames = Object.fromEntries(items.map((e) => [String(e.show_id), e.show_title]));
+  const f = state.f, act = activeFilters();
+  const opt = (arr, cur) => arr.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`).join("");
+  const seg = (k, icon, label) => `<button class="seg-b ${state.group === k ? "on" : ""}" data-group="${k}" aria-label="${label}" title="${label}">${icon}</button>`;
+  return `
+  <div class="toolbar">
+    <select class="chip" data-f="sort">${opt(SORTS, f.sort)}</select>
+    <button class="chip ${act.length ? "on" : ""}" data-act="open-filters">${I.filter}Filtros${act.length ? ` · ${act.length}` : ""}</button>
+    <div style="flex:1"></div>
+    ${opts.group ? `<div class="seg glass">${seg("list", I.rows, "Lista")}${seg("topic", I.topics, "Por assunto")}${seg("theme", I.grid, "Por tema")}</div>` : ""}
+  </div>
+  ${act.length ? `<div class="filters" style="padding-top:6px">${act.map(([k, l]) => `<button class="chip on small" data-clear="${k}">${esc(l)} ${I.x}</button>`).join("")}<button class="chip small" data-act="clear-filters">Limpar</button></div>` : ""}`;
+}
+function filterSheet() {
+  const items = state._filterItems || [];
   const f = state.f;
   const themes = [...new Set(items.map((e) => e.theme).filter(Boolean))].sort();
-  const shows = [...new Map(items.map((e) => [String(e.show_id), e.show_title])).entries()].sort((a, b) => (a[1] || "").localeCompare(b[1] || ""));
+  const count = (pred) => items.filter(pred).length;
+  const shows = [...new Map(items.map((e) => [String(e.show_id), e.show_title])).entries()]
+    .map(([id, t]) => [id, t, count((e) => String(e.show_id) === id)]).sort((a, b) => b[2] - a[2]);
   const langs = [...new Set(items.map((e) => e.language).filter(Boolean))];
-  const opt = (arr, cur) => arr.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`).join("");
-  const sel = (k, cur) => `class="chip ${cur ? "on" : ""}" data-f="${k}"`;
+  const chips = (k, arr) => `<div class="wrap">${arr.map(([v, l, n]) => `<button class="chip ${f[k] === v ? "on" : ""}" data-set="${k}" data-v="${esc(v)}">${esc(l)}${n != null ? ` <span class="n">${n}</span>` : ""}</button>`).join("")}</div>`;
   return `
-  <div class="filters">
-    <button class="chip ${!f.theme ? "on" : ""}" data-theme="">Todos</button>
-    ${themes.map((t) => `<button class="chip ${f.theme === t ? "on" : ""}" data-theme="${esc(t)}">${esc(t)}</button>`).join("")}
-  </div>
-  <div class="filters">
-    <select class="chip" data-f="sort">${opt([["smart", "Recomendado"], ["pub_desc", "Mais novos"], ["pub_asc", "Mais antigos"], ["expiring", "Vencendo antes"], ["dur_asc", "Mais curtos"], ["dur_desc", "Mais longos"]], f.sort)}</select>
-    <select ${sel("dur", f.dur)}>${opt(DUR, f.dur)}</select>
-    <select ${sel("age", f.age)}>${opt(AGE, f.age)}</select>
-    <select ${sel("show", f.show)}>${opt([["", "Programa"], ...shows], f.show)}</select>
-    ${langs.length > 1 ? `<select ${sel("lang", f.lang)}>${opt([["", "Idioma"], ...langs.map((l) => [l, LANG[l] || l])], f.lang)}</select>` : ""}
-  </div>`;
+    <div class="sheet-h"><h3>Filtros</h3><button class="btn quiet" data-act="clear-filters">Limpar</button></div>
+    <div class="fs-scroll">
+      <div class="fs-l">Tema</div>${chips("theme", [["", "Todos"], ...themes.map((t) => [t, t, count((e) => e.theme === t)])])}
+      <div class="fs-l">Duração</div>${chips("dur", DUR.map(([v, l]) => [v, v ? l : "Qualquer"]))}
+      <div class="fs-l">Validade</div>${chips("age", AGE.map(([v, l]) => [v, v ? l : "Qualquer"]))}
+      ${langs.length > 1 ? `<div class="fs-l">Idioma</div>${chips("lang", [["", "Todos"], ...langs.map((l) => [l, LANG[l] || l])])}` : ""}
+      <div class="fs-l">Programa</div>
+      <select class="chip" data-f="show" style="width:100%">${[["", "Todos os programas", items.length], ...shows].map(([v, l, n]) => `<option value="${esc(v)}" ${f.show === v ? "selected" : ""}>${esc(l)} (${n})</option>`).join("")}</select>
+    </div>
+    <div class="row"><div style="flex:1"></div><button class="btn primary" data-act="close-filters">Ver ${applyFilters(items).length} episódios</button></div>`;
 }
 
 function inList(slug, id) { const l = state.lists.find((x) => x.slug === slug); return !!l?.fila_list_items?.some((i) => i.episode_id === id); }
@@ -355,8 +435,23 @@ function card(e, mode) {
     done: e.notion_page_id
       ? `<div class="scroll"><span class="hint" style="margin:0">Ouvido ${ago(e.done_at).toLowerCase()}</span></div><a class="btn small" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank">${I.ext}Notion</a>`
       : `<div class="scroll"><span class="hint" style="margin:0">${esc(e.notion_error ? (/NOTION_TOKEN/.test(e.notion_error) ? "Notion ainda não conectado" : "Falhou ao enviar pro Notion") : "Ouvido " + ago(e.done_at).toLowerCase())}</span></div><button class="btn small" data-act="notion" data-id="${e.id}">Enviar pro Notion</button>`,
+    archive: `<div class="scroll"><span class="hint" style="margin:0">${e.archive_reason === "expired" ? "Venceu" : "Arquivado"} ${ago(e.archived_at).toLowerCase()}</span></div>
+            <button class="btn small" data-act="restore" data-id="${e.id}">Restaurar</button>
+            <button class="btn small primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
   }[mode];
   const open = state.open[e.id];
+  // ---- visão compacta: uma linha, ação principal à direita, resto ao tocar ----
+  if (state.dense && !open) {
+    const quick = { inbox: ["keep", I.check, "Manter"], queue: ["done", I.check, "Ouvi"], archive: ["restore", I.restore, "Restaurar"] }[mode];
+    return `<div class="card dense">
+      <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <div class="dense-t" data-act="toggle" data-id="${e.id}">
+        <div class="title">${esc(e.title)}</div>
+        <div class="meta"><span class="show-s">${esc(e.show_title || "")}</span><span>· ${fmtDur(e.duration_sec)}</span>${mode === "queue" && mode !== "done" && v.cls !== "ever" ? `<span class="dot-v ${v.cls}" title="${v.label}"></span>` : ""}${isYT ? `<span class="pill yt mini-p">YT</span>` : ""}</div>
+      </div>
+      ${quick ? `<button class="round small ${mode === "queue" ? "accent" : "glass"}" data-act="${quick[0]}" data-id="${e.id}" aria-label="${quick[2]}">${quick[1]}</button>` : ""}
+    </div>`;
+  }
   return `<div class="card">
     <div class="card-top">
       <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
@@ -382,7 +477,8 @@ function card(e, mode) {
         <div class="filters" style="margin:0;padding:0">
           <select class="chip" data-act="theme" data-id="${e.id}">${(state.config.themes || []).map((t) => `<option ${t === e.theme ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>
           <a class="chip" href="${esc(e.apple_url)}" target="_blank">Abrir na Apple ↗</a>
-          ${mode !== "done" ? `<button class="chip" data-act="dismiss" data-id="${e.id}">Descartar</button>` : ""}
+          ${mode === "queue" || mode === "inbox" ? `<button class="chip" data-act="archive" data-id="${e.id}">Arquivar</button><button class="chip" data-act="dismiss" data-id="${e.id}">Descartar</button>` : ""}
+          ${state.dense ? `<button class="chip" data-act="toggle" data-id="${e.id}">Fechar</button>` : ""}
         </div>
         ${e.shelves?.length ? `<div class="hint" style="margin:0">Shelves: ${e.shelves.map(esc).join(", ")}</div>` : ""}
       </div>` : ""}
@@ -399,16 +495,39 @@ function viewInbox() {
   const all = state.episodes.filter((e) => e.status === "inbox");
   const items = applyFilters(all);
   $("#filterbar").innerHTML = filterBar(all);
-  setSub(all.length ? `${all.length} novos · triagem em ordem de publicação` : "Novos episódios dos programas que você segue");
+  const following = state.shows.filter((s) => s.follow).length;
+  setSub(all.length ? `${all.length} novos · ${fmtLong(all.reduce((s, e) => s + (e.duration_sec || 0), 0))}` : following ? `Seguindo ${following} programas` : "Episódios novos dos programas que você segue");
   if (!all.length)
-    return empty(I.inbox, "Inbox zerada", state.shows.some((s) => s.follow)
-      ? "Quando sair episódio novo dos programas que você segue, ele aparece aqui pra você manter ou descartar."
-      : "Siga seus programas e os episódios novos chegam aqui sozinhos, em ordem de publicação. Chega de salvar 3 semanas de uma vez.",
-      `<button class="btn primary" data-go="settings">Seguir programas</button>`);
-  const old = all.filter((e) => validity(e).cls === "old").length;
-  return (old ? `<div class="row" style="justify-content:flex-end;margin:0 0 10px"><button class="btn small" data-act="dismiss-old">${I.trash}Descartar ${old} vencidos</button></div>` : "")
-    + `<div class="grid">${items.map((e) => card(e, "inbox")).join("")}</div>`;
+    return (following
+      ? empty(I.inbox, "Inbox zerada", `Você segue ${following} programas. Quando sair episódio novo, ele aparece aqui (o app checa a cada hora).`)
+      : empty(I.inbox, "Siga seus programas", "Os episódios novos chegam aqui sozinhos, em ordem de publicação. Esses são os que você mais ouviu no último ano:"))
+      + suggestions(following ? 4 : 10);
+  return `<div class="grid">${items.map((e) => card(e, "inbox")).join("")}</div>`;
 }
+
+// Programas que você mais ouve, pra seguir com um toque
+function suggestions(n = 10, title = "") {
+  const rows = (state.stats?.shows_365 || []).filter((s) => s.id && !s.follow).slice(0, n);
+  if (!rows.length) return "";
+  return `<div class="panel" style="margin-top:6px">${title ? `<h3 style="margin-bottom:6px">${title}</h3>` : ""}
+    ${rows.map((s) => `<div class="li"><img src="${esc(s.artwork || "")}" alt="" onerror="this.style.visibility='hidden'"><div class="t"><div class="a">${esc(s.show)}</div><div class="b">${s.n} ouvidos · ${fmtLong(s.min * 60)} no último ano</div></div>
+      <button class="btn small primary" data-act="follow-id" data-id="${s.id}">Seguir</button></div>`).join("")}
+    <div class="row"><button class="btn small" data-act="follow-all" data-n="${n}">Seguir todos</button></div>
+  </div>`;
+}
+
+function viewArchive() {
+  const all = state.archive || [];
+  const items = applyFilters(all);
+  $("#filterbar").innerHTML = `<div class="toolbar"><button class="chip" data-go="queue">${I.back}Fila</button><div style="flex:1"></div></div>` + filterBar(all);
+  setSub(state.archive ? `${all.length.toLocaleString("pt-BR")} episódios · ${fmtLong(all.reduce((s, e) => s + (e.duration_sec || 0), 0))}` : "Carregando…");
+  if (!state.archive) { loadArchive(); return `<div class="empty"><p>Carregando o arquivo…</p></div>`; }
+  if (!all.length) return empty(I.archive, "Arquivo vazio", "Episódios que vencem saem da Fila e vêm pra cá. Ficam guardados como histórico do que te interessou.");
+  return `<div class="hint" style="margin:2px 4px 12px">Venceram ou você arquivou. Ficam aqui como histórico do que te interessou; restaure se ainda quiser ouvir (ganha mais 7 dias).</div>`
+    + `<div class="grid">${items.slice(0, state.limit || 60).map((e) => card(e, "archive")).join("")}</div>`
+    + (items.length > (state.limit || 60) ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more">Mostrar mais (${items.length - (state.limit || 60)})</button></div>` : "");
+}
+async function loadArchive() { try { state.archive = await api("/archive"); } catch (e) { toast(e.message); state.archive = []; } render(); }
 
 // ---------- Assuntos (episódios sobre o mesmo tema) e prioridade ----------
 const STOP = new Set(("a o os as um uma de do da dos das e em no na nos nas por para pra com sem que se ao à é como mais menos sobre entre seu sua seus suas ele ela eles isso este esta esse essa ser ter vai foi são está the a an and or of to in on for with without from by at is are was be how why what who when where your you our we it its this that these those vs versus not new episode ep podcast part parte live show interview entrevista conversa talk talks special edition ft feat full week weekly daily news today hoje semana dia diário diet tbpn all-in " +
@@ -470,19 +589,16 @@ function prio(e) {
   return out;
 }
 
-function groupBar() {
-  const b = (k, l) => `<button class="chip ${state.group === k ? "on" : ""}" data-group="${k}">${l}</button>`;
-  return `<div class="filters" style="padding-top:2px">${b("list", "Lista")}${b("topic", "Por assunto")}${b("theme", "Por tema")}</div>`;
-}
-
 function viewQueue() {
   const all = state.episodes.filter((e) => e.status === "queue" || e.status === "listening");
   _prio.clear();
   state._queueClusters = clusters(all);
   const items = applyFilters(all);
-  $("#filterbar").innerHTML = filterBar(all) + (all.length ? groupBar() : "");
-  const totalMin = items.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
-  setSub(all.length ? `${items.length}${items.length !== all.length ? " de " + all.length : ""} episódios · ${fmtDur(totalMin * 60)} de áudio` : "Seus episódios escolhidos");
+  $("#filterbar").innerHTML = filterBar(all, { group: true });
+  const totalSec = items.reduce((s, e) => s + (e.duration_sec || 0), 0);
+  setSub(all.length ? `${items.length.toLocaleString("pt-BR")}${items.length !== all.length ? " de " + all.length.toLocaleString("pt-BR") : ""} episódios · ${fmtLong(totalSec)}` : "Seus episódios escolhidos");
+  const archived = state.stats?.archived || 0;
+  const archiveLink = archived ? `<button class="archive-link glass" data-go="archive">${I.archive}<span><b>Arquivo</b><br><small>${archived.toLocaleString("pt-BR")} episódios que venceram ou você arquivou</small></span>${I.chev}</button>` : "";
   if (!all.length)
     return empty(I.list, "Fila vazia", "Mande episódios pelo Compartilhar do Apple Podcasts (atalho “Mandar pra Fila”), pelo botão + aqui em cima, ou mantenha os da Inbox.",
       `<button class="btn primary" data-act="open-add">${I.plus}Mandar episódio</button><button class="btn" data-go="inbox">Ir pra Inbox</button>`);
@@ -492,24 +608,25 @@ function viewQueue() {
     const shown = open ? eps : eps.slice(0, 4);
     return `<div class="group"><div class="group-h"><div><div class="gt">${esc(title)}</div><div class="sub">${sub}</div></div></div><div class="grid">${shown.map((e) => card(e, "queue")).join("")}</div>${eps.length > shown.length ? `<div class="row" style="justify-content:center"><button class="btn small" data-act="more-group" data-g="${esc(title)}">Ver mais ${eps.length - shown.length}</button></div>` : ""}</div>`;
   };
-  const totalOf = (eps) => fmtDur(eps.reduce((s, e) => s + (e.duration_sec || 0), 0));
+  const totalOf = (eps) => fmtLong(eps.reduce((s, e) => s + (e.duration_sec || 0), 0));
   if (state.group === "topic") {
     const inItems = new Set(items.map((e) => e.id));
     const gs = state._queueClusters.groups.map((g) => ({ ...g, eps: items.filter((e) => g.eps.some((x) => x.id === e.id)) })).filter((g) => g.eps.length >= 2);
     const used = new Set(gs.flatMap((g) => g.eps.map((e) => e.id)));
     const rest = items.filter((e) => inItems.has(e.id) && !used.has(e.id));
     return (gs.length ? gs.map((g) => group(g.label, `${g.eps.length} episódios · ${totalOf(g.eps)} · ouça 1 ou 2, não todos`, g.eps)).join("") : `<div class="hint" style="margin:6px 4px 14px">Nenhum assunto se repete nos episódios filtrados.</div>`)
-      + (rest.length ? group("Outros assuntos", `${rest.length} episódios`, rest) : "");
+      + (rest.length ? group("Outros assuntos", `${rest.length} episódios`, rest) : "") + archiveLink;
   }
   if (state.group === "theme") {
     const by = {};
     items.forEach((e) => (by[e.theme || "Outros"] ||= []).push(e));
-    return Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([t, eps]) => group(t, `${eps.length} episódios · ${totalOf(eps)}`, eps)).join("");
+    return Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([t, eps]) => group(t, `${eps.length} episódios · ${totalOf(eps)}`, eps)).join("") + archiveLink;
   }
   const top = state.f.sort === "smart" && !state.f.theme && !state.f.show && items.length > 4 ? items.slice(0, 3) : [];
   return (top.length ? `<div class="section-title" style="margin-top:6px">Ouça primeiro</div><div class="grid">${top.map((e) => card(e, "queue")).join("")}</div><div class="section-title">Resto da fila</div>` : "")
     + `<div class="grid">${items.slice(top.length, state.limit || 60).map((e) => card(e, "queue")).join("")}</div>`
-    + (items.length > (state.limit || 60) ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more">Mostrar mais (${items.length - (state.limit || 60)} restantes)</button></div>` : "");
+    + (items.length > (state.limit || 60) ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more">Mostrar mais (${items.length - (state.limit || 60)} restantes)</button></div>` : "")
+    + archiveLink;
 }
 
 function viewConnect() {
@@ -528,7 +645,7 @@ function viewDone() {
   const done = state.episodes.filter((e) => e.status === "done").sort((a, b) => new Date(b.done_at) - new Date(a.done_at));
   const st = state.stats || {};
   const total = st.count ?? done.length;
-  setSub(total ? `${total.toLocaleString("pt-BR")} episódios · ${Math.round((st.min_total || 0) / 60).toLocaleString("pt-BR")}h no total` : "Seu histórico de escuta");
+  setSub(total ? `${total.toLocaleString("pt-BR")} episódios · ${fmtLong((st.min_total || 0) * 60)}` : "Seu histórico de escuta");
   const bars = (rows, key) => {
     const max = rows[0]?.min || 1;
     return `<div class="panel"><div class="bars" style="margin:0">${rows.map((r) =>
@@ -592,10 +709,11 @@ function viewSettings() {
     <div class="sub">${followed ? `Seguindo ${followed} programa${followed > 1 ? "s" : ""}. O app checa os RSS a cada hora.` : "Cole o link de um programa do Apple Podcasts pra seguir."}</div>
     <div class="row"><input type="url" id="show-url" placeholder="https://podcasts.apple.com/br/podcast/…/id123"><button class="btn primary" data-act="follow">Seguir</button></div>
     <div style="margin-top:8px">
-    ${state.shows.map((s) => `<div class="li"><img src="${esc(s.artwork || "")}" alt=""><div class="t"><div class="a">${esc(s.title)}</div><div class="b">${esc(s.genre || "")}${s.last_polled_at ? " · lido " + ago(s.last_polled_at).toLowerCase() : ""}</div></div>
-      <button class="btn small ${s.follow ? "on" : ""}" data-act="unfollow" data-id="${s.id}" data-follow="${!s.follow}">${s.follow ? "Seguindo" : "Seguir"}</button></div>`).join("")}
+    ${state.shows.filter((s) => s.follow).map((s) => `<div class="li"><img src="${esc(s.artwork || "")}" alt=""><div class="t"><div class="a">${esc(s.title)}</div><div class="b">${esc(s.genre || "")}${s.last_polled_at ? " · lido " + ago(s.last_polled_at).toLowerCase() : ""}</div></div>
+      <button class="btn small on" data-act="unfollow" data-id="${s.id}" data-follow="false">Seguindo</button></div>`).join("")}
     </div>
   </div>
+  <div style="grid-column:1/-1">${suggestions(20, "Sugestões: o que você mais ouviu")}</div>
   <div class="panel">
     <h3>Integrações</h3>
     <div class="li"><div class="t"><div class="a">Notion · 📻 Podcasts</div><div class="b">${!c.notion ? "Falta o NOTION_TOKEN no Supabase" : c.notion_synced_at ? "Sincroniza nos dois sentidos · " + ago(c.notion_synced_at).toLowerCase() : c.notion_importing ? "Importação pela metade" : "Conectado · histórico ainda não importado"}</div></div><span class="pill ${c.notion ? "fresh" : "old"}">${c.notion ? "Conectado" : "Desligado"}</span></div>
@@ -612,18 +730,24 @@ function viewSettings() {
 function setSub(t) { $("#h-sub").textContent = t; }
 
 function render() {
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === state.tab));
-  const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes" };
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === (state.tab === "archive" ? "queue" : state.tab)));
+  const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo" };
   $("#h-title").textContent = titles[state.tab];
   const nInbox = state.episodes.filter((e) => e.status === "inbox").length;
   $("#cnt-inbox").innerHTML = nInbox ? `<span class="dot">${nInbox > 99 ? "99+" : nInbox}</span>` : "";
   if (state.needToken) { $("#h-title").textContent = "Conectar"; $("#main").innerHTML = viewConnect(); return; }
-  $("#main").innerHTML = { inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings }[state.tab]();
+  $("#main").innerHTML = ({ inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings, archive: viewArchive }[state.tab] || viewQueue)();
+  $("#main").querySelectorAll(".grid").forEach((g) => g.classList.toggle("densegrid", state.dense));
+  const db = $("#btn-dense"); db.innerHTML = state.dense ? I.expand : I.compact; db.title = state.dense ? "Visão normal" : "Visão compacta";
+  db.style.display = ["queue", "inbox", "archive"].includes(state.tab) ? "" : "none";
+  if ($("#fsheet").classList.contains("show")) $("#fsheet").innerHTML = filterSheet();
   const tp = $("#theme-pick"); if (tp) tp.value = LS.get("theme", "");
 }
 
 // ---------- add sheet ----------
+function closeFilters() { $("#fsheet").classList.remove("show"); $("#scrim").classList.remove("show"); }
 function openSheet(show) {
+  if (!show) closeFilters();
   $("#sheet").classList.toggle("show", show); $("#scrim").classList.toggle("show", show);
   if (show) setTimeout(() => $("#add-url").focus(), 250); else $("#add-url").blur();
 }
@@ -654,6 +778,33 @@ async function act(el) {
     if (a === "more-group") { state.groupOpen = { ...(state.groupOpen || {}), [el.dataset.g]: true }; return render(); }
     if (a === "open-add") return openSheet(true);
     if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "" }; LS.set("filters", state.f); return render(); }
+    if (a === "open-filters") { $("#fsheet").innerHTML = filterSheet(); $("#fsheet").classList.add("show"); $("#scrim").classList.add("show"); return; }
+    if (a === "close-filters") { closeFilters(); return; }
+    if (a === "dense") { state.dense = !state.dense; LS.set("dense", state.dense); state.open = {}; return render(); }
+    if (a === "archive") {
+      const e = state.episodes.find((x) => x.id === id); patchLocal(id, { status: "archived" }); render();
+      await api(`/episodes/${id}`, { status: "archived" });
+      if (state.stats) state.stats.archived = (state.stats.archived || 0) + 1;
+      if (state.archive && e) state.archive.unshift({ ...e, status: "archived", archived_at: new Date().toISOString(), archive_reason: "manual" });
+      return toast("Arquivado");
+    }
+    if (a === "restore") {
+      const r = await api(`/episodes/${id}`, { restore: true });
+      state.archive = (state.archive || []).filter((x) => x.id !== id);
+      state.episodes.push(r.episode); if (state.stats) state.stats.archived = Math.max(0, (state.stats.archived || 1) - 1);
+      render(); return toast("De volta na Fila por mais 7 dias");
+    }
+    if (a === "follow-id" || a === "follow-all") {
+      const ids = a === "follow-id" ? [id] : (state.stats?.shows_365 || []).filter((s) => s.id && !s.follow).slice(0, Number(el.dataset.n || 10)).map((s) => String(s.id));
+      el.disabled = true;
+      for (const sid of ids) {
+        await api("/shows", { id: Number(sid), follow: true });
+        const s = state.stats?.shows_365?.find((x) => String(x.id) === sid); if (s) s.follow = true;
+      }
+      toast(ids.length > 1 ? `Seguindo ${ids.length} programas. Buscando episódios novos…` : "Seguindo. Buscando episódios novos…");
+      await api("/refresh", {}).catch(() => {});
+      return load();
+    }
     if (a === "keep") { patchLocal(id, { status: "queue" }); render(); await api(`/episodes/${id}`, { status: "queue" }); return toast("Na Fila"); }
     if (a === "dismiss") { patchLocal(id, { status: "dismissed" }); render(); await api(`/episodes/${id}`, { status: "dismissed" }); return toast("Descartado"); }
     if (a === "dismiss-old") {
@@ -707,7 +858,11 @@ document.addEventListener("click", (ev) => {
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
   const t = ev.target.closest("[data-act]"); if (t && t.tagName !== "SELECT") { ev.preventDefault(); act(t); return; }
-  const gb = ev.target.closest(".chip[data-group]");
+  const st = ev.target.closest("[data-set]");
+  if (st) { state.f[st.dataset.set] = st.dataset.v; LS.set("filters", state.f); state.limit = 60; return render(); }
+  const cl = ev.target.closest("[data-clear]");
+  if (cl) { state.f[cl.dataset.clear] = ""; LS.set("filters", state.f); return render(); }
+  const gb = ev.target.closest("[data-group]");
   if (gb) { state.group = gb.dataset.group; LS.set("group", state.group); return render(); }
   const th = ev.target.closest(".chip[data-theme]");
   if (th) { state.f.theme = th.dataset.theme; LS.set("filters", state.f); render(); return; }
@@ -720,7 +875,6 @@ document.addEventListener("change", async (ev) => {
   if (s.dataset.act === "theme") { patchLocal(s.dataset.id, { theme: s.value }); await api(`/episodes/${s.dataset.id}`, { theme: s.value }).catch((e) => toast(e.message)); render(); }
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
 });
-$("#btn-refresh").onclick = async () => { toast("Atualizando…"); try { await api("/refresh", {}); } catch (e) {} load(); };
 window.addEventListener("scroll", () => $("#hdr").classList.toggle("scrolled", scrollY > 8), { passive: true });
 function applyTheme() { const t = LS.get("theme", ""); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 applyTheme();
