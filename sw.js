@@ -18,3 +18,7 @@ self.addEventListener("notificationclick", (e) => {
     return self.clients.openWindow(url);
   })());
 });
+// a página sempre vem da rede (sem cache do navegador), pra o app instalado pegar a versão nova na hora
+self.addEventListener("fetch", (e) => {
+  if (e.request.mode === "navigate") e.respondWith(fetch(e.request, { cache: "no-store" }).catch(() => fetch(e.request)));
+});

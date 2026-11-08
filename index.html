@@ -64,6 +64,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stro
   border:.5px solid var(--glass-edge);box-shadow:var(--hi),var(--glass-shadow)}
 
 /* ---------- Header ---------- */
+.sbar{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--bg);z-index:25}
 header{position:sticky;top:0;z-index:20;padding:calc(env(safe-area-inset-top) + 14px) 20px 10px;transition:background .25s,box-shadow .25s}
 header.scrolled{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);box-shadow:0 .5px 0 var(--line)}
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;max-width:980px;margin:0 auto}
@@ -174,6 +175,32 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .why{font-size:13px;font-weight:600;color:var(--accent);margin:-2px 0 6px;line-height:1.3}
 .group{margin:8px 0 22px}
 .grid>*{min-width:0}
+.tri-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 4px 12px;color:var(--muted);font-size:15px}
+.tri-h b{color:var(--ink)}
+.tri{position:relative;max-width:520px;margin:0 auto}
+.tc{border-radius:28px;overflow:hidden;border:.5px solid var(--glass-edge);background:var(--card)}
+.tc-top{position:relative;z-index:2;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;box-shadow:0 18px 40px rgba(0,0,0,.14)}
+.tc-next{position:absolute;inset:0;z-index:1;transform:scale(.94) translateY(14px);opacity:.6}
+.tc-art{width:100%;height:150px;object-fit:cover;display:block;background:var(--fill);pointer-events:none}
+.tc-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px}
+.tc-title{font-size:21px;font-weight:700;line-height:1.25}
+.tc-chips{display:flex;flex-wrap:wrap;gap:6px}
+.tc-desc{font-size:15px;color:var(--ink2);line-height:1.45;max-height:5.8em;overflow:hidden}
+.tc .show{font-size:13px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-body{padding:14px 18px 16px;gap:8px}
+.tc-title{font-size:20px}
+.tc .why{font-size:14px;color:var(--accent);font-weight:600}
+.tc-stamp{position:absolute;top:22px;z-index:3;padding:6px 14px;border-radius:12px;font-weight:800;font-size:22px;letter-spacing:.06em;border:3px solid;opacity:0;transition:opacity .1s;background:rgba(255,255,255,.85)}
+.tc-stamp.yes{left:20px;color:#1f9d55;border-color:#1f9d55;transform:rotate(-12deg)}
+.tc-stamp.no{right:20px;color:#d93025;border-color:#d93025;transform:rotate(12deg)}
+.tc-top.to-yes .tc-stamp.yes,.tc-top.to-no .tc-stamp.no{opacity:1}
+.tri-btns{display:flex;justify-content:center;align-items:center;gap:18px;margin:18px 0 6px}
+.tb{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;border:.5px solid var(--glass-edge);background:var(--card);box-shadow:0 6px 18px rgba(0,0,0,.12);cursor:pointer;color:var(--ink)}
+.tb svg.i{width:26px;height:26px}
+.tb.no{color:#d93025}.tb.yes{color:#fff;background:#1f9d55;border-color:transparent;width:66px;height:66px}
+.tb.skip,.tb.open{width:46px;height:46px}.tb.open svg.i{width:20px;height:20px}
+.seg-b.wide{width:auto;padding:0 12px;font-size:14px;font-weight:600}
+.pill.auto{background:rgba(31,157,85,.14);color:#1f9d55}
 .xgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .xt{text-align:left;border:.5px solid var(--glass-edge);border-radius:20px;padding:12px;cursor:pointer;color:inherit;font:inherit;box-shadow:var(--hi)}
 .xt.on{outline:2px solid var(--accent)}
@@ -181,8 +208,8 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .xt .xa img{width:34px;height:34px;border-radius:9px;object-fit:cover;margin-right:-8px;border:2px solid var(--card)}
 .xt .xn{font-weight:700;font-size:16px;line-height:1.2}
 .xt .xs{font-size:13px;color:var(--muted);margin-top:3px}
-.sw{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:.5px solid var(--line)}
-.sw .t{flex:1;min-width:0}.sw .t b{font-weight:600}.sw .t small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.swr{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:.5px solid var(--line)}
+.swr .t{flex:1;min-width:0}.swr .t b{font-weight:600}.swr .t small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
 .tg{width:51px;height:31px;border-radius:16px;background:var(--fill);border:0;position:relative;cursor:pointer;flex:none;transition:background .2s}
 .tg::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .2s}
 .tg.on{background:#34c759}.tg.on::after{transform:translateX(20px)}
@@ -250,8 +277,8 @@ details summary::-webkit-details-marker{display:none}
 /* ---------- Sheet & toast ---------- */
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .25s}
 .scrim.show{opacity:1;pointer-events:auto}
-.sheet{position:fixed;z-index:41;left:50%;bottom:max(14px, env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);border-radius:32px;padding:20px;transform:translate(-50%,130%);transition:transform .35s cubic-bezier(.2,.9,.25,1)}
-.sheet.show{transform:translate(-50%,0)}
+.sheet{position:fixed;z-index:41;left:50%;bottom:max(14px, env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);border-radius:32px;padding:20px;transform:translate(-50%,calc(100% + 120px));visibility:hidden;transition:transform .35s cubic-bezier(.2,.9,.25,1),visibility 0s .35s}
+.sheet.show{transform:translate(-50%,0);visibility:visible;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .sheet h3{margin:0 0 4px;font-size:22px}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translate(-50%,-220%);opacity:0;visibility:hidden;pointer-events:none;z-index:50;padding:12px 18px;border-radius:22px;font-size:15px;font-weight:600;max-width:92vw;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .toast{transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .25s,visibility 0s .35s}
@@ -259,6 +286,7 @@ details summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
+<div class="sbar"></div>
 <header id="hdr">
   <div class="top">
     <div style="min-width:0"><h1 id="h-title">Fila</h1><div class="sub" id="h-sub">&nbsp;</div></div>
@@ -308,6 +336,7 @@ const state = {
   needToken: false,
   open: {}, loaded: false,
   swipeList: LS.get("swipeList", "hoje"),
+  inboxMode: LS.get("inboxMode", "list"),
 };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -441,6 +470,7 @@ function filterBar(items, opts = {}) {
     <select class="chip" data-f="sort">${opt(SORTS, f.sort)}</select>
     <button class="chip ${act.length ? "on" : ""}" data-act="open-filters">${I.filter}<span class="fl">Filtros</span>${act.length ? `<span class="fl"> ·</span> ${act.length}` : ""}</button>
     <div style="flex:1"></div>
+    ${opts.inbox ? `<div class="seg glass">${["list", "triage"].map((k) => `<button class="seg-b wide ${(state.inboxMode || "list") === k ? "on" : ""}" data-inboxmode="${k}">${k === "list" ? "Lista" : "Triagem"}</button>`).join("")}</div>` : ""}
     ${opts.group ? `<div class="seg glass">${seg("list", I.rows, "Lista")}${seg("explore", I.compass, "Explorar temas e assuntos")}${seg("topic", I.topics, "Por assunto")}${seg("theme", I.grid, "Por tema")}</div>` : ""}
   </div>
   ${act.length ? `<div class="filters" style="padding-top:6px">${act.map(([k, l]) => `<button class="chip on small" data-clear="${k}">${esc(l)} ${I.x}</button>`).join("")}<button class="chip small" data-act="clear-filters">Limpar</button></div>` : ""}`;
@@ -515,6 +545,7 @@ function cardInner(e, mode) {
         </div>
         <div class="meta" style="margin-top:6px">
           ${isYT ? `<span class="pill yt">YouTube</span>` : ""}
+          ${e.auto_reason ? `<span class="pill auto" title="${esc(e.auto_reason)}">Automático</span>` : ""}
           <span class="pill">${esc(e.theme || "Sem tema")}</span>
           ${mode !== "done" ? `<span class="pill ${v.cls}">${v.label}</span>` : ""}
         </div>
@@ -604,7 +635,7 @@ function empty(icon, title, text, buttons = "") {
 function viewInbox() {
   const all = state.episodes.filter((e) => e.status === "inbox");
   const items = applyFilters(all);
-  $("#filterbar").innerHTML = filterBar(all);
+  $("#filterbar").innerHTML = filterBar(all, { inbox: true });
   const following = state.shows.filter((s) => s.follow).length;
   setSub(all.length ? `${all.length} novos · ${fmtLong(all.reduce((s, e) => s + (e.duration_sec || 0), 0))}` : following ? `Seguindo ${following} programas` : "Episódios novos dos programas que você segue");
   if (!all.length)
@@ -612,8 +643,84 @@ function viewInbox() {
       ? empty(I.inbox, "Inbox zerada", `Você segue ${following} programas. Quando sair episódio novo, ele aparece aqui (o app checa a cada hora).`)
       : empty(I.inbox, "Siga seus programas", "Os episódios novos chegam aqui sozinhos, em ordem de publicação. Esses são os que você mais ouviu no último ano:"))
       + suggestions(following ? 4 : 10);
+  if (state.inboxMode === "triage") return viewTriage(items);
   return `<div class="grid">${items.map((e) => card(e, "inbox")).join("")}</div>`;
 }
+
+// ---------- Triagem: um card por vez. → Fila, ← descarta, ↑ pula ----------
+function viewTriage(items) {
+  const skip = state.triageSkip || [];
+  const deck = [...items.filter((e) => !skip.includes(e.id)), ...skip.map((id) => items.find((e) => e.id === id)).filter(Boolean)];
+  const done = state.triageLog || [];
+  const kept = done.filter((d) => d.to === "queue").length, gone = done.length - kept;
+  const head = `<div class="tri-h"><span>${deck.length ? `Faltam <b>${deck.length}</b>` : "Tudo triado"}${done.length ? ` · ${kept} na Fila · ${gone} descartado${gone === 1 ? "" : "s"}` : ""}</span>${done.length ? `<button class="chip small" data-act="tri-undo">${I.restore}Desfazer</button>` : ""}</div>`;
+  if (!deck.length) return head + empty(I.check, "Inbox triada", "Volte quando chegar episódio novo. A lista completa está no botão Lista.");
+  const e = deck[0], next = deck[1];
+  if (e.description === undefined && !e._loading) { e._loading = true; api(`/episodes/${e.id}`).then((d) => { e.description = d.description || ""; if (state.inboxMode === "triage") render(); }).catch(() => {}); }
+  const v = validity(e);
+  const topic = clusters(state.episodes.filter((x) => x.status === "inbox" || x.status === "queue")).map.get(e.id)?.label;
+  const why = prio(e).why.filter((w) => !/Mesmo assunto|comece por este|^Vence|Notícia fresca|Ainda atual/.test(w)).slice(0, 2);
+  const chip = (t, cls = "") => `<span class="pill ${cls}">${esc(t)}</span>`;
+  return head + `<div class="tri">
+    ${next ? `<div class="tc tc-next glass"><img class="tc-art" src="${esc(next.artwork || "")}" alt=""></div>` : ""}
+    <div class="tc tc-top glass" data-tid="${e.id}">
+      <div class="tc-stamp yes">FILA</div><div class="tc-stamp no">DESCARTAR</div>
+      <img class="tc-art" src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="tc-body">
+        <div class="show">${esc(e.show_title || "")}</div>
+        <div class="tc-title">${esc(e.title)}</div>
+        <div class="tc-chips">${chip(fmtDur(e.duration_sec) || "?")}${chip(e.theme || "Sem tema")}${chip(v.label, v.cls)}${topic ? chip("Assunto: " + topic, "reason") : ""}${e.language && e.language !== "English" ? chip(LANG[e.language] || e.language) : ""}</div>
+        ${e.shelves?.length ? `<div class="shelves">${e.shelves.map((x) => `<span class="shelf">${esc(x)}</span>`).join("")}</div>` : ""}
+        ${why.length ? `<div class="why">${why.map(esc).join(" · ")}</div>` : ""}
+        <div class="tc-desc">${e.description === undefined ? "Carregando descrição…" : esc((e.description || "Sem descrição.").slice(0, 420))}</div>
+      </div>
+    </div>
+  </div>
+  <div class="tri-btns">
+    <button class="tb no" data-act="tri" data-to="dismissed" data-id="${e.id}" aria-label="Descartar">${I.x}</button>
+    <button class="tb skip" data-act="tri-skip" data-id="${e.id}" aria-label="Pular">${I.up}</button>
+    <a class="tb open" href="${esc(e.url || e.apple_url || "#")}" target="_blank" rel="noopener" aria-label="Abrir">${I.play}</a>
+    <button class="tb yes" data-act="tri" data-to="queue" data-id="${e.id}" aria-label="Pra Fila">${I.check}</button>
+  </div>
+  <div class="hint" style="text-align:center">Arraste pra direita: Fila · pra esquerda: descartar · pra cima: depois</div>`;
+}
+async function triDecide(id, to) {
+  const e = state.episodes.find((x) => x.id === id); if (!e) return;
+  (state.triageLog ||= []).push({ id, to });
+  state.triageSkip = (state.triageSkip || []).filter((x) => x !== id);
+  patchLocal(id, { status: to }); render();
+  // grava em fila: o "desfazer" espera a gravação anterior terminar (evita a ordem inverter)
+  state.triPending = (state.triPending || Promise.resolve()).then(() => api(`/episodes/${id}`, { status: to })).catch((err) => toast(err.message));
+  await state.triPending;
+}
+(() => {
+  let d = null;
+  const reset = (c) => { c.style.transition = "transform .3s cubic-bezier(.2,.9,.25,1)"; c.style.transform = ""; c.classList.remove("to-yes", "to-no"); };
+  document.addEventListener("pointerdown", (ev) => {
+    const c = ev.target.closest(".tc-top"); if (!c || ev.target.closest("a,button")) return;
+    d = { c, x: ev.clientX, y: ev.clientY, dx: 0, dy: 0 }; c.setPointerCapture?.(ev.pointerId); c.style.transition = "none";
+  });
+  document.addEventListener("pointermove", (ev) => {
+    if (!d) return;
+    d.dx = ev.clientX - d.x; d.dy = ev.clientY - d.y;
+    d.c.style.transform = `translate(${d.dx}px, ${Math.min(0, d.dy)}px) rotate(${d.dx / 18}deg)`;
+    d.c.classList.toggle("to-yes", d.dx > 60); d.c.classList.toggle("to-no", d.dx < -60);
+  });
+  const end = () => {
+    if (!d) return;
+    const { c, dx, dy } = d; d = null; const id = c.dataset.tid;
+    if (Math.abs(dx) > 110) {
+      c.style.transition = "transform .28s ease-out"; c.style.transform = `translate(${dx > 0 ? 140 : -140}%, 0) rotate(${dx > 0 ? 18 : -18}deg)`;
+      if (navigator.vibrate) navigator.vibrate(10);
+      setTimeout(() => triDecide(id, dx > 0 ? "queue" : "dismissed"), 200);
+    } else if (dy < -110) {
+      c.style.transition = "transform .28s ease-out"; c.style.transform = "translate(0,-130%)";
+      setTimeout(() => { state.triageSkip = [...(state.triageSkip || []).filter((x) => x !== id), id]; render(); }, 200);
+    } else reset(c);
+  };
+  document.addEventListener("pointerup", end);
+  document.addEventListener("pointercancel", end);
+})();
 
 // Programas que você mais ouve, pra seguir com um toque
 function suggestions(n = 10, title = "") {
@@ -858,6 +965,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
+    <div class="hint">Versão 2026-11-08 · 4</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -921,6 +1029,23 @@ function viewWatch() {
   }).join("") + `</div>`;
 }
 
+// ---------- Fila automática ----------
+async function loadAuto() { try { state.auto = await api("/auto"); } catch (e) { state.auto = { error: e.message }; } render(); }
+function autoPanel() {
+  if (!state.auto) { loadAuto(); return `<div class="panel" style="grid-column:1/-1"><h3>Fila automática</h3><div class="sub">Lendo seu histórico…</div></div>`; }
+  const a = state.auto; if (a.error) return "";
+  const lv = a.levels || {}, cur = lv[a.level] || {};
+  return `<div class="panel" style="grid-column:1/-1">
+    <h3>Fila automática</h3>
+    <div class="swr"><div class="t"><b>Mandar direto pra Fila</b><small>Episódio novo de programa que você realmente ouve pula a Inbox. Aparece com o selo “Automático”.</small></div><button class="tg ${a.enabled ? "on" : ""}" data-act="auto-toggle" aria-label="Fila automática"></button></div>
+    <div class="fs-l">Quanto deixar entrar</div>
+    <div class="wrap">${Object.entries(lv).map(([k, l]) => `<button class="chip ${a.level === k ? "on" : ""}" data-act="auto-level" data-k="${k}">${l.label} <span class="n">${l.inbox_now}</span></button>`).join("")}</div>
+    <div class="hint">${esc(cur.label || "")}: programas que você terminou ${cur.min}+ vezes nos últimos 90 dias (e não anda descartando). Na Inbox de agora seriam <b>${cur.inbox_now}</b> episódios${cur.shows?.length ? `, como ${esc(cur.shows.slice(0, 4).join(", "))}` : ""}.</div>
+    <div class="swr"><div class="t"><b>Limite por dia</b><small>Pra Fila não encher num dia de muitos lançamentos</small></div><select class="chip time" data-auto="max_day">${[4, 8, 12, 20].map((v) => `<option ${Number(a.max_day) === v ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+    ${cur.inbox_now ? `<div class="row"><button class="btn" data-act="auto-apply">Aplicar agora na Inbox (${cur.inbox_now})</button></div>` : ""}
+  </div>`;
+}
+
 // ---------- Notificações ----------
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -940,7 +1065,7 @@ function notifyPanel() {
   const n = state.notify;
   const favs = state.shows.filter((s) => s.favorite).length;
   const times = (k, list) => `<select class="chip time" data-np="${k}">${list.map((t) => `<option ${n[k] === t ? "selected" : ""}>${t}</option>`).join("")}</select>`;
-  const row = (k, title, sub, extra = "") => `<div class="sw"><div class="t"><b>${title}</b><small>${sub}</small></div>${extra}<button class="tg ${n[k] ? "on" : ""}" data-act="np-toggle" data-k="${k}" aria-label="${title}"></button></div>`;
+  const row = (k, title, sub, extra = "") => `<div class="swr"><div class="t"><b>${title}</b><small>${sub}</small></div>${extra}<button class="tg ${n[k] ? "on" : ""}" data-act="np-toggle" data-k="${k}" aria-label="${title}"></button></div>`;
   let device;
   if (!pushCapable && isIOS && !standalone) device = `<div class="hint">No iPhone, notificação só funciona com o Fila aberto pela Tela de Início. Se ainda não instalou: Safari → Compartilhar → <b>Adicionar à Tela de Início</b>, e abra por lá.</div>`;
   else if (!pushCapable) device = `<div class="hint">Este navegador não aceita notificações. Use o Fila instalado na Tela de Início do iPhone.</div>`;
@@ -994,6 +1119,7 @@ function viewSettings() {
   const fol = state.shows.filter((s) => s.follow).sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
   const folShown = state.showAllShows ? fol : fol.slice(0, Math.max(8, fol.filter((s) => s.favorite).length));
   return `<div class="grid">
+  ${autoPanel()}
   ${notifyPanel()}
   <div class="panel" style="grid-column:1/-1">
     <h3>Inbox automática</h3>
@@ -1081,6 +1207,20 @@ async function act(el) {
       s.favorite = !s.favorite; render();
       await api("/shows", { id: Number(id), favorite: s.favorite });
       return toast(s.favorite ? `★ ${s.title}: vai avisar quando sair episódio` : `${s.title} saiu dos favoritos`);
+    }
+    if (a === "auto-toggle") { state.auto.enabled = !state.auto.enabled; render(); await api("/auto", { enabled: state.auto.enabled }); return toast(state.auto.enabled ? "Fila automática ligada: vale pros próximos episódios" : "Fila automática desligada"); }
+    if (a === "auto-level") { state.auto.level = el.dataset.k; render(); await api("/auto", { level: el.dataset.k }); return; }
+    if (a === "auto-apply") {
+      el.disabled = true; const r = await api("/auto/apply", { level: state.auto.level });
+      state.auto = null; await load(); return toast(`${r.queued} episódio${r.queued === 1 ? "" : "s"} da Inbox foram pra Fila`);
+    }
+    if (a === "tri") return triDecide(id, el.dataset.to);
+    if (a === "tri-skip") { state.triageSkip = [...(state.triageSkip || []).filter((x) => x !== id), id]; return render(); }
+    if (a === "tri-undo") {
+      const last = (state.triageLog || []).pop(); if (!last) return;
+      patchLocal(last.id, { status: "inbox" }); render();
+      state.triPending = (state.triPending || Promise.resolve()).then(() => api(`/episodes/${last.id}`, { status: "inbox" }));
+      await state.triPending; return toast("Desfeito");
     }
     if (a === "explore-all") { state.exploreAll = { ...(state.exploreAll || {}), [el.dataset.k]: true }; return render(); }
     if (a === "more-group") { state.groupOpen = { ...(state.groupOpen || {}), [el.dataset.g]: true }; return render(); }
@@ -1202,6 +1342,8 @@ document.addEventListener("click", (ev) => {
   if (cl) { state.f[cl.dataset.clear] = ""; LS.set("filters", state.f); return render(); }
   const xp = ev.target.closest("[data-explore]");
   if (xp) { const k = xp.dataset.explore; state.f[k] = state.f[k] === xp.dataset.v ? "" : xp.dataset.v; LS.set("filters", state.f); state.group = "list"; LS.set("group", "list"); state.limit = 60; window.scrollTo(0, 0); return render(); }
+  const im = ev.target.closest("[data-inboxmode]");
+  if (im) { state.inboxMode = im.dataset.inboxmode; LS.set("inboxMode", state.inboxMode); window.scrollTo(0, 0); return render(); }
   const gb = ev.target.closest("[data-group]");
   if (gb) { state.group = gb.dataset.group; LS.set("group", state.group); return render(); }
   const th = ev.target.closest(".chip[data-theme]");
@@ -1213,6 +1355,7 @@ document.addEventListener("change", async (ev) => {
   const s = ev.target;
   if (s.dataset.f) { state.f[s.dataset.f] = s.value; LS.set("filters", state.f); render(); }
   if (s.dataset.act === "theme") { patchLocal(s.dataset.id, { theme: s.value }); await api(`/episodes/${s.dataset.id}`, { theme: s.value }).catch((e) => toast(e.message)); render(); }
+  if (s.dataset.auto) { state.auto[s.dataset.auto] = Number(s.value); await api("/auto", { [s.dataset.auto]: Number(s.value) }).catch((e) => toast(e.message)); }
   if (s.dataset.np) { const v = s.dataset.np === "inbox_max" ? Number(s.value) : s.value; state.notify[s.dataset.np] = v; await api("/notify/prefs", { [s.dataset.np]: v }).catch((e) => toast(e.message)); toast(`Horário: ${s.value}`); }
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
   if (s.id === "swipe-pick") { state.swipeList = s.value; LS.set("swipeList", s.value); toast(`Deslizar → ${listName(s.value)}`); }
