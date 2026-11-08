@@ -203,6 +203,10 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:30px;backgroun
 .pill.guest{border:0;cursor:pointer;background:rgba(80,120,255,.12);color:#3d5ccc;display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:13px;font-weight:600;padding:2px 8px}
 .pill.guest svg.i{width:13px;height:13px}
 .pill.auto{background:rgba(31,157,85,.14);color:#1f9d55}
+.search-box{flex:1;display:flex;align-items:center;gap:8px;border-radius:18px;padding:0 6px 0 12px;height:42px}
+.search-box input{flex:1;border:0;background:none;font:inherit;font-size:17px;color:var(--ink);outline:none;min-width:0}
+.search-box input::-webkit-search-cancel-button{display:none}
+.search-box svg.i{color:var(--muted);width:20px;height:20px}
 .xgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .xt{text-align:left;border:.5px solid var(--glass-edge);border-radius:20px;padding:12px;cursor:pointer;color:inherit;font:inherit;box-shadow:var(--hi)}
 .xt.on{outline:2px solid var(--accent)}
@@ -300,6 +304,7 @@ details summary::-webkit-details-marker{display:none}
   <div class="top">
     <div style="min-width:0"><h1 id="h-title">Fila</h1><div class="sub" id="h-sub">&nbsp;</div></div>
     <div class="hbtns">
+      <button class="round glass" data-act="open-search" aria-label="Buscar"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
       <button class="round glass" id="btn-dense" data-act="dense" aria-label="Alternar visão compacta"></button>
       <button class="round accent" id="btn-add" aria-label="Mandar episódio"><svg class="i" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
@@ -813,6 +818,31 @@ function reasonSheet(e) {
     <div class="row" id="reason-other" style="display:none"><input type="text" id="reason-text" placeholder="Escreva o motivo"><button class="btn primary" data-act="archive-reason" data-reason="custom" data-id="${e.id}">Arquivar</button></div>`;
 }
 
+// ---------- Busca: título, programa, convidado, Shelf, tema e história, em todas as listas ----------
+const foldS = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function searchHay(e) { return e._hay ??= foldS([e.title, e.show_title, e.author, (e.guests || []).join(" "), (e.shelves || []).join(" "), e.theme, e.story_label].join(" ")); }
+function viewSearch() {
+  const q = state.q || "";
+  $("#filterbar").innerHTML = `<div class="toolbar"><div class="search-box glass"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="q" type="search" placeholder="Episódio, programa, convidado, assunto…" value="${esc(q)}" autocomplete="off" enterkeyhint="search">${q ? `<button class="mini" data-act="q-clear" aria-label="Limpar">${I.x}</button>` : ""}</div></div>`;
+  if (!state.archive) loadArchive();
+  const terms = foldS(q).split(/\s+/).filter(Boolean);
+  if (!terms.length) { setSub("Busca em Inbox, Fila, Ouvidos e Arquivo"); return `<div class="hint" style="margin:6px 4px">Busque por palavra do título, nome do programa, convidado (ex.: “Altman”), Shelf ou assunto. Vale mais de uma palavra.</div>`; }
+  const match = (e) => terms.every((t) => searchHay(e).includes(t));
+  const sections = [
+    ["Inbox", "inbox", state.episodes.filter((e) => e.status === "inbox")],
+    ["Fila", "queue", state.episodes.filter((e) => e.status === "queue" || e.status === "listening")],
+    ["Ouvidos (recentes)", "done", state.episodes.filter((e) => e.status === "done")],
+    ["Arquivo", "archive", state.archive || []],
+  ].map(([t, mode, list]) => [t, mode, list.filter(match)]);
+  const total = sections.reduce((a, [, , l]) => a + l.length, 0);
+  setSub(`${total.toLocaleString("pt-BR")} resultado${total === 1 ? "" : "s"}`);
+  if (!total) return empty(I.inbox, "Nada encontrado", `Nenhum episódio com “${esc(q)}”.${state.archive ? "" : " (o Arquivo ainda está carregando)"}`);
+  return sections.filter(([, , l]) => l.length).map(([t, mode, l]) => {
+    const lim = state.qMore?.[mode] ? 200 : 8;
+    return `<div class="section-title">${t} <span class="n" style="font-weight:500;color:var(--muted);font-size:15px">${l.length}</span></div><div class="grid">${l.slice(0, lim).map((e) => card(e, mode)).join("")}</div>${l.length > lim ? `<div class="row" style="justify-content:center"><button class="btn small" data-act="q-more" data-mode="${mode}">Ver mais ${l.length - lim}</button></div>` : ""}`;
+  }).join("");
+}
+
 function viewArchive() {
   const base = state.archive || [];
   const counts = {};
@@ -1082,7 +1112,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-08 · 10</div>
+    <div class="hint">Versão 2026-11-08 · 11</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1281,7 +1311,7 @@ function setSub(t) { $("#h-sub").textContent = t; }
 
 function render() {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === (state.tab === "archive" ? "queue" : state.tab)));
-  const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo" };
+  const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
   $("#h-title").textContent = titles[state.tab];
   const nInbox = state.episodes.filter((e) => e.status === "inbox").length;
   $("#cnt-inbox").innerHTML = nInbox ? `<span class="dot">${nInbox > 99 ? "99+" : nInbox}</span>` : "";
@@ -1293,7 +1323,7 @@ function render() {
       : `<div class="empty"><p>Carregando seus episódios…</p></div>`;
     return;
   }
-  $("#main").innerHTML = ({ inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings, archive: viewArchive }[state.tab] || viewQueue)();
+  $("#main").innerHTML = ({ inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings, archive: viewArchive, search: viewSearch }[state.tab] || viewQueue)();
   $("#main").querySelectorAll(".grid").forEach((g) => g.classList.toggle("densegrid", state.dense));
   const db = $("#btn-dense"); db.innerHTML = state.dense ? I.expand : I.compact; db.title = state.dense ? "Visão normal" : "Visão compacta";
   db.style.display = ["queue", "inbox", "archive"].includes(state.tab) ? "" : "none";
@@ -1351,6 +1381,9 @@ async function act(el) {
     if (a === "pl-toggle") { const au = player.audio; au.paused ? au.play() : au.pause(); return; }
     if (a === "pl-back") { player.audio.currentTime -= 15; return; }
     if (a === "pl-close") { playerSave(); player.audio.pause(); player.ep = null; player.queue = []; return drawPlayer(); }
+    if (a === "open-search") { state.prevTab = state.tab === "search" ? state.prevTab : state.tab; state.tab = "search"; render(); setTimeout(() => $("#q")?.focus(), 50); return; }
+    if (a === "q-clear") { state.q = ""; render(); $("#q")?.focus(); return; }
+    if (a === "q-more") { state.qMore = { ...(state.qMore || {}), [el.dataset.mode]: true }; return render(); }
     if (a === "reload") { state.loadError = null; render(); return load(); }
     if (a === "al-toggle") {
       const k = el.dataset.k; state.autoLists[k] = !state.autoLists[k]; render();
@@ -1512,6 +1545,17 @@ document.addEventListener("change", async (ev) => {
   if (s.dataset.np) { const v = s.dataset.np === "inbox_max" ? Number(s.value) : s.value; state.notify[s.dataset.np] = v; await api("/notify/prefs", { [s.dataset.np]: v }).catch((e) => toast(e.message)); toast(`Horário: ${s.value}`); }
   if (s.id === "theme-pick") { LS.set("theme", s.value); applyTheme(); }
   if (s.id === "swipe-pick") { state.swipeList = s.value; LS.set("swipeList", s.value); toast(`Deslizar → ${listName(s.value)}`); }
+});
+let _qT = null;
+document.addEventListener("input", (ev) => {
+  if (ev.target.id !== "q") return;
+  clearTimeout(_qT);
+  _qT = setTimeout(() => {
+    state.q = ev.target.value; state.qMore = {};
+    const pos = ev.target.selectionStart;
+    render();
+    const i = $("#q"); if (i) { i.focus(); i.setSelectionRange(pos, pos); }
+  }, 180);
 });
 window.addEventListener("scroll", () => $("#hdr").classList.toggle("scrolled", scrollY > 8), { passive: true });
 function applyTheme() { const t = LS.get("theme", ""); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
