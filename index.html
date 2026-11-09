@@ -1037,9 +1037,15 @@ function dayPlan(all) {
     .sort((a, b) => b.s - a.s).map((x) => x.e);
   const picked = [], shows = new Set(), topics = new Set(), themes = {};
   let total = 0, long = 0, short = 0;
-  const left = (e) => (e.playhead_sec ? Math.max(0, (e.duration_sec || 0) - e.playhead_sec) : e.duration_sec || 1800);
+  // duração desconhecida: usa a mediana do próprio programa; sem referência, o episódio fica de fora do plano
+  const showDur = {};
+  for (const x of state.episodes) if (x.duration_sec > 60 && x.show_title) (showDur[x.show_title] ||= []).push(x.duration_sec);
+  const est = (e) => { const a = showDur[e.show_title]; if (!a) return null; a.sort((p, q) => p - q); return a[a.length >> 1]; };
+  const full = (e) => (e.duration_sec > 60 ? e.duration_sec : est(e));
+  const left = (e) => { const f = full(e); return f == null ? null : Math.max(0, f - (e.playhead_sec || 0)); };
   const ok = (e, relax) => {
     const d = left(e), g = state._queueClusters?.map.get(e.id);
+    if (d == null) return false;
     if (shows.has(e.show_title)) return false;
     if (g && topics.has(g.label)) return false;
     if ((themes[e.theme] || 0) >= (relax ? 3 : 2)) return false;
@@ -1053,7 +1059,7 @@ function dayPlan(all) {
     themes[e.theme] = (themes[e.theme] || 0) + 1; total += d; if (d > 75 * 60) long++; if (d < 25 * 60) short++;
   };
   for (const relax of [false, true]) for (const e of pool) { if (total >= target * 0.9) break; if (!picked.includes(e) && ok(e, relax)) add(e); }
-  if (!short) { const s = pool.find((e) => !picked.includes(e) && left(e) < 25 * 60 && !shows.has(e.show_title)); if (s && total + left(s) <= target * 1.25) add(s); }
+  if (!short) { const s = pool.find((e) => !picked.includes(e) && left(e) != null && left(e) < 25 * 60 && !shows.has(e.show_title)); if (s && total + left(s) <= target * 1.25) add(s); }
   // ordem de escuta: em andamento primeiro, depois alterna temas, curto no meio
   picked.sort((a, b) => recentListening(b) - recentListening(a));
   return { eps: picked, total, themes: Object.keys(themes).length, target };
@@ -1136,7 +1142,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-08 · 13</div>
+    <div class="hint">Versão 2026-11-09 · 14</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
