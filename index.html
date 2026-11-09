@@ -251,6 +251,7 @@ select.chip.time{height:30px;font-size:13px;padding:0 24px 0 10px}
 .li img{width:52px;height:52px;border-radius:11px;object-fit:cover;background:var(--fill)}
 .num{width:26px;text-align:center;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .player{position:fixed;z-index:29;left:50%;transform:translateX(-50%);bottom:calc(max(14px, env(safe-area-inset-bottom) - 6px) + 76px);width:min(calc(100% - 20px),560px);border-radius:22px;padding:10px 10px 10px 10px;display:flex;align-items:center;gap:10px;overflow:hidden}
+.day-card{margin:0 0 10px}.day-card .card{margin:0}
 .day-x{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 10px 34px}
 .player img{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--fill)}
 .player .t{flex:1;min-width:0}.player .a{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player .b{font-size:13px;color:var(--muted)}
@@ -1325,7 +1326,7 @@ function dayPanel(d) {
     <div class="day-list">${d.eps.map((e, i) => `<div class="li">
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
-      ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>${state.dayOpen === e.id ? dayActions(e) : ""}`).join("")}</div>
+      ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>${state.dayOpen === e.id ? `<div class="day-card">${card(e, "queue")}</div>` : ""}`).join("")}</div>
     <div class="row">${IS_MAC ? `<a class="btn" href="filailha://day">${I.play}Na ilha</a>` : `<button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button>`}<button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
   </div>`;
 }
@@ -1336,7 +1337,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 22</div>
+    <div class="hint">Versão 2026-11-09 · 23</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1724,7 +1725,12 @@ async function act(el) {
       const k = `daySkip:${today()}`; const cur = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening")).eps.map((e) => e.id);
       LS.set(k, [...LS.get(k, []), ...cur]); return render();
     }
-    if (a === "toggle-day") { state.dayOpen = state.dayOpen === id ? null : id; return render(); }
+    if (a === "toggle-day") {
+      state.dayOpen = state.dayOpen === id ? null : id; if (state.dayOpen) state.open[id] = true; render();
+      const e = state.episodes.find((x) => x.id === id);
+      if (state.dayOpen && e && e.description === undefined) { const d = await api(`/episodes/${id}`).catch(() => ({})); e.description = d.description || ""; render(); }
+      return;
+    }
     if (a === "day-send") {
       const d = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening"));
       el.disabled = true; toast("Montando a Fila · Hoje…");
