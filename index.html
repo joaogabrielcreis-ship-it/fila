@@ -313,7 +313,11 @@ details summary::-webkit-details-marker{display:none}
 .es-lbl{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .es-foot{flex:none;padding:12px 16px 16px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .es-foot .grow{flex:1}
-[data-ep]{cursor:pointer}.tc-top[data-ep]{cursor:grab}
+[data-ep]{cursor:pointer}
+button.jump{font-family:inherit;cursor:pointer;line-height:inherit}
+button.pill.jump{border:0}
+button.pill.jump:active,button.shelf.jump:active,.show-link:active,.why-link:active{opacity:.6}
+.show-link,.why-link{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;text-align:left;cursor:pointer;letter-spacing:inherit;text-transform:inherit}.tc-top[data-ep]{cursor:grab}
 .es-foot{flex-wrap:nowrap}.es-foot .btn{white-space:nowrap}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translate(-50%,-220%);opacity:0;visibility:hidden;pointer-events:none;z-index:50;padding:12px 18px;border-radius:22px;font-size:15px;font-weight:600;max-width:92vw;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .toast{transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .25s,visibility 0s .35s}
@@ -655,18 +659,18 @@ function cardInner(e, mode) {
     <div class="card-top">
       <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
       <div style="min-width:0">
-        <div class="show">${esc(e.show_title)}</div>
+        <div class="show">${jp("show", showKeyOf(e), esc(e.show_title || ""), "show-link")}</div>
         <div class="title" data-act="toggle" data-id="${e.id}">${esc(e.title)}</div>
-        ${mode === "queue" && prio(e).why.length ? `<div class="why">${esc(prio(e).why.slice(0, 2).join(" · "))}</div>` : ""}
+        ${mode === "queue" && prio(e).why.length ? `<div class="why">${topicOf(e) ? jp("topic", topicOf(e), esc(prio(e).why.slice(0, 2).join(" · ")), "why-link") : esc(prio(e).why.slice(0, 2).join(" · "))}</div>` : ""}
         <div class="meta">
           <span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>${progress(e) ? `<span class="prog">${progress(e)}</span>` : ""}
         </div>
         <div class="meta" style="margin-top:6px">
-          ${isYT ? `<span class="pill yt">YouTube</span>` : ""}
+          ${isYT ? jp("platform", "youtube", "YouTube", "pill yt") : ""}
           ${e.auto_reason ? `<span class="pill auto" title="${esc(e.auto_reason)}">Automático</span>` : ""}
-          <span class="pill">${esc(e.theme || "Sem tema")}</span>
-          ${mode !== "done" ? `<span class="pill ${v.cls}">${v.label}</span>` : ""}
-          ${(e.guests || []).slice(0, 2).map((g) => `<button class="pill guest" data-explore="guest" data-v="${esc(g)}" title="Ver todos com ${esc(g)}">${I.person}${esc(g)}</button>`).join("")}
+          ${e.theme ? jp("theme", e.theme, esc(e.theme)) : `<span class="pill">Sem tema</span>`}
+          ${mode !== "done" ? jp("age", v.cls, v.label, `pill ${v.cls}`) : ""}
+          ${(e.guests || []).slice(0, 2).map((g) => `<button class="pill guest jump" data-jump="guest" data-v="${esc(g)}" title="Ver todos com ${esc(g)}">${I.person}${esc(g)}</button>`).join("")}
         </div>
       </div>
     </div>
@@ -683,7 +687,7 @@ function cardInner(e, mode) {
           ${mode === "queue" || mode === "inbox" ? `<button class="chip" data-act="archive" data-id="${e.id}">Arquivar</button><button class="chip" data-act="dismiss" data-id="${e.id}">Descartar</button>` : ""}
           ${state.dense ? `<button class="chip" data-act="toggle" data-id="${e.id}">Fechar</button>` : ""}
         </div>
-        ${e.shelves?.length ? `<div class="shelves">${e.shelves.map((x) => `<span class="shelf">${esc(x)}</span>`).join("")}</div>` : ""}
+        ${e.shelves?.length ? `<div class="shelves">${e.shelves.map((x) => jp("shelf", x, esc(x), "shelf")).join("")}</div>` : ""}
       </div>` : ""}
     <div class="actions">${actions}</div>
   </div>`;
@@ -703,6 +707,16 @@ const SWIPE = {
   archive: { right: ["restore", () => "Restaurar"], left: null },
 };
 function listName(slug) { return (state.lists.find((l) => l.slug === slug)?.title || slug || "Hoje").replace("Fila · ", ""); }
+// etiqueta clicável → Fila filtrada por ela
+const jp = (k, v, label, cls = "pill") => v ? `<button class="${cls} jump" data-jump="${k}" data-v="${esc(v)}" title="Ver a Fila filtrada">${label}</button>` : "";
+const topicOf = (e) => state._queueClusters?.map.get(e.id)?.label || "";
+function jump(k, v) {
+  closeEp();
+  ["theme", "shelf", "platform", "guest", "topic", "show", "lang", "dur", "age"].forEach((x) => (state.f[x] = ""));
+  state.f[k] = v; LS.set("filters", state.f);
+  state.tab = "queue"; LS.set("tab", "queue"); state.group = "list"; LS.set("group", "list"); state.limit = 60;
+  window.scrollTo(0, 0); render();
+}
 const EPS = new Map(); // todo episódio desenhado na tela (inclui os que vêm do servidor: busca, Ouvidos antigos)
 function card(e, mode) {
   EPS.set(e.id, e);
@@ -789,10 +803,10 @@ function viewTriage(items) {
       <div class="tc-stamp yes">FILA</div><div class="tc-stamp no">DESCARTAR</div>
       <img class="tc-art" src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="tc-body">
-        <div class="show">${esc(e.show_title || "")}</div>
+        <div class="show">${jp("show", showKeyOf(e), esc(e.show_title || ""), "show-link")}</div>
         <div class="tc-title">${esc(e.title)}</div>
         <div class="tc-chips">${chip(fmtDur(e.duration_sec) || "?")}${chip(e.theme || "Sem tema")}${chip(v.label, v.cls)}${topic ? chip((tg?.story ? "História: " : "Assunto: ") + topic, "reason") : ""}${(e.guests || []).slice(0, 3).map((g) => chip("Com " + g, "guest")).join("")}${e.language && e.language !== "English" ? chip(LANG[e.language] || e.language) : ""}</div>
-        ${e.shelves?.length ? `<div class="shelves">${e.shelves.map((x) => `<span class="shelf">${esc(x)}</span>`).join("")}</div>` : ""}
+        ${e.shelves?.length ? `<div class="shelves">${e.shelves.map((x) => jp("shelf", x, esc(x), "shelf")).join("")}</div>` : ""}
         ${why.length ? `<div class="why">${why.map(esc).join(" · ")}</div>` : ""}
         <div class="tc-desc">${e.description === undefined ? "Carregando descrição…" : esc((e.description || "Sem descrição.").slice(0, 420))}</div>
       </div>
@@ -1360,7 +1374,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 29</div>
+    <div class="hint">Versão 2026-11-09 · 30</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1682,7 +1696,7 @@ function epSheet(e) {
   <div class="es-h">
     <img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
     <div class="t">
-      <div class="show">${esc(e.show_title || "")}</div>
+      <div class="show">${jp("show", showKeyOf(e), esc(e.show_title || ""), "show-link")}</div>
       <div class="es-title">${esc(e.title)}</div>
       <div class="meta"><span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>${progress(e) ? `<span class="prog">${progress(e)}</span>` : ""}</div>
     </div>
@@ -1690,18 +1704,19 @@ function epSheet(e) {
   </div>
   <div class="es-body">
     <div class="meta" style="margin:0 0 12px">
-      ${isYT ? `<span class="pill yt">YouTube</span>` : ""}
+      ${isYT ? jp("platform", "youtube", "YouTube", "pill yt") : ""}
       ${e.auto_reason ? `<span class="pill auto" title="${esc(e.auto_reason)}">Automático</span>` : ""}
-      <span class="pill">${esc(e.theme || "Sem tema")}</span>
-      ${mode === "done" ? `<span class="pill">Ouvido ${ago(e.done_at).toLowerCase()}</span>` : `<span class="pill ${v.cls}">${v.label}</span>`}
-      ${(e.guests || []).slice(0, 3).map((g) => `<button class="pill guest" data-explore="guest" data-v="${esc(g)}">${I.person}${esc(g)}</button>`).join("")}
+      ${e.theme ? jp("theme", e.theme, esc(e.theme)) : `<span class="pill">Sem tema</span>`}
+      ${mode === "done" ? `<span class="pill">Ouvido ${ago(e.done_at).toLowerCase()}</span>` : jp("age", v.cls, v.label, `pill ${v.cls}`)}
+      ${topicOf(e) ? jp("topic", topicOf(e), `Assunto: ${esc(topicOf(e))}`, "pill reason") : ""}
+      ${(e.guests || []).slice(0, 3).map((g) => `<button class="pill guest jump" data-jump="guest" data-v="${esc(g)}">${I.person}${esc(g)}</button>`).join("")}
     </div>
     ${mode === "queue" && prio(e).why.length ? `<div class="why" style="margin-bottom:10px">${esc(prio(e).why.join(" · "))}</div>` : ""}
     <div class="desc">${e.description === undefined ? "Carregando…" : esc(e.description || "Sem descrição.")}</div>
     ${lists ? `<div class="es-sec"><div class="es-lbl">Listas do Watch</div><div class="wrap">${lists}</div></div>` : ""}
     <div class="es-sec"><div class="es-lbl">Validade</div><div class="wrap">${["news", "tech", "evergreen"].map((k) => `<button class="chip ${e.kind === k ? "on" : ""}" data-act="kind" data-kind="${k}" data-id="${e.id}">${KIND_LABEL[k]}</button>`).join("")}</div></div>
     <div class="es-sec"><div class="es-lbl">Tema</div><select class="chip" data-act="theme" data-id="${e.id}">${(state.config.themes || []).map((t) => `<option ${t === e.theme ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
-    ${e.shelves?.length ? `<div class="es-sec"><div class="es-lbl">Estantes</div><div class="shelves">${e.shelves.map((x) => `<span class="shelf">${esc(x)}</span>`).join("")}</div></div>` : ""}
+    ${e.shelves?.length ? `<div class="es-sec"><div class="es-lbl">Estantes</div><div class="shelves">${e.shelves.map((x) => jp("shelf", x, esc(x), "shelf")).join("")}</div></div>` : ""}
     ${mode === "queue" ? `<div class="es-sec"><div class="wrap"><button class="chip" data-act="archive" data-id="${e.id}">Arquivar</button><button class="chip" data-act="dismiss" data-id="${e.id}">Descartar</button></div></div>` : ""}
   </div>
   <div class="es-foot">
@@ -1924,6 +1939,8 @@ async function act(el) {
 document.addEventListener("click", (ev) => {
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
+  const jb = ev.target.closest("[data-jump]");
+  if (jb) { ev.preventDefault(); return jump(jb.dataset.jump, jb.dataset.v); }
   const t = ev.target.closest("[data-act]");
   // tocar em qualquer parte de um episódio abre o detalhe (botões, links e campos continuam com a ação deles)
   const epEl = ev.target.closest("[data-ep]");
