@@ -503,7 +503,8 @@ function ago(d) {
   return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
 }
 const mins = (s) => (s ? Math.round(s / 60) : null);
-const fmtDur = (s) => { const m = mins(s); if (m == null) return "—"; return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${m} min`; };
+const fmtDur = (s) => { const m = mins(s); if (m == null) return "—"; if (m >= 1440) { const d = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return h === 24 ? `${d + 1}d` : `${d.toLocaleString("pt-BR")}d${h ? ` ${h}h` : ""}`; }
+  return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${m} min`; };
 // total longo: "61 dias 4h 12min"
 function fmtLong(sec) {
   const t = Math.round((sec || 0) / 60), d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
@@ -511,7 +512,7 @@ function fmtLong(sec) {
   if (h) return `${h}h ${m}min`;
   return `${m} min`;
 }
-const fmtHours = (m) => (m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1).replace(".", ",")}<small>h</small>` : `${m}<small>min</small>`);
+const fmtHours = (m) => (m >= 2880 ? `${(m / 1440).toFixed(m >= 14400 ? 0 : 1).replace(".", ",")}<small>${m >= 1440 * 1.95 ? " dias" : " dia"}</small>` : m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1).replace(".", ",")}<small>h</small>` : `${m}<small>min</small>`);
 function validity(e) {
   if (e.kind === "evergreen" || !e.expires_at) return { cls: "ever", label: "Não vence" };
   const left = (new Date(e.expires_at) - Date.now()) / DAY;
@@ -1357,7 +1358,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 27</div>
+    <div class="hint">Versão 2026-11-09 · 28</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
