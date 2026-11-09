@@ -310,6 +310,7 @@ details summary::-webkit-details-marker{display:none}
 .es-lbl{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .es-foot{flex:none;padding:12px 16px 16px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .es-foot .grow{flex:1}
+[data-ep]{cursor:pointer}.tc-top[data-ep]{cursor:grab}
 .es-foot{flex-wrap:nowrap}.es-foot .btn{white-space:nowrap}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translate(-50%,-220%);opacity:0;visibility:hidden;pointer-events:none;z-index:50;padding:12px 18px;border-radius:22px;font-size:15px;font-weight:600;max-width:92vw;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .toast{transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .25s,visibility 0s .35s}
@@ -637,7 +638,7 @@ function cardInner(e, mode) {
   // ---- visão compacta: uma linha, ação principal à direita, resto ao tocar ----
   if (state.dense && !open) {
     const quick = { inbox: ["keep", I.check, "Manter"], queue: ["done", I.check, "Ouvi"], archive: ["restore", I.restore, "Restaurar"] }[mode];
-    return `<div class="card dense">
+    return `<div class="card dense" data-ep="${e.id}">
       <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
       <div class="dense-t" data-act="toggle" data-id="${e.id}">
         <div class="title">${esc(e.title)}</div>
@@ -646,7 +647,7 @@ function cardInner(e, mode) {
       ${quick ? `<button class="round small ${mode === "queue" ? "accent" : "glass"}" data-act="${quick[0]}" data-id="${e.id}" aria-label="${quick[2]}">${quick[1]}</button>` : ""}
     </div>`;
   }
-  return `<div class="card">
+  return `<div class="card" data-ep="${e.id}">
     <div class="card-top">
       <img class="art" src="${esc(e.artwork || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
       <div style="min-width:0">
@@ -698,7 +699,9 @@ const SWIPE = {
   archive: { right: ["restore", () => "Restaurar"], left: null },
 };
 function listName(slug) { return (state.lists.find((l) => l.slug === slug)?.title || slug || "Hoje").replace("Fila · ", ""); }
+const EPS = new Map(); // todo episódio desenhado na tela (inclui os que vêm do servidor: busca, Ouvidos antigos)
 function card(e, mode) {
+  EPS.set(e.id, e);
   const sw = SWIPE[mode];
   if (!sw) return cardInner(e, mode);
   return `<div class="sw" data-sid="${e.id}" data-mode="${mode}">
@@ -778,7 +781,7 @@ function viewTriage(items) {
   const chip = (t, cls = "") => `<span class="pill ${cls}">${esc(t)}</span>`;
   return head + `<div class="tri">
     ${next ? `<div class="tc tc-next glass"><img class="tc-art" src="${esc(next.artwork || "")}" alt=""></div>` : ""}
-    <div class="tc tc-top glass" data-tid="${e.id}">
+    <div class="tc tc-top glass" data-tid="${e.id}" data-ep="${e.id}">
       <div class="tc-stamp yes">FILA</div><div class="tc-stamp no">DESCARTAR</div>
       <img class="tc-art" src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="tc-body">
@@ -823,7 +826,7 @@ async function triDecide(id, to) {
   });
   const end = () => {
     if (!d) return;
-    const { c, dx, dy } = d; d = null; const id = c.dataset.tid;
+    const { c, dx, dy } = d; d = null; const id = c.dataset.tid; window._tcMovedAt = Math.abs(dx) + Math.abs(dy) > 8 ? Date.now() : 0;
     if (Math.abs(dx) > 110) {
       c.style.transition = "transform .28s ease-out"; c.style.transform = `translate(${dx > 0 ? 140 : -140}%, 0) rotate(${dx > 0 ? 18 : -18}deg)`;
       if (navigator.vibrate) navigator.vibrate(10);
@@ -1147,7 +1150,7 @@ function progressSync(final) {
   const a = player.audio, ep = player.ep;
   if (!ep || !a || !a.duration || !isFinite(a.duration)) return;
   const cur = Math.floor(a.currentTime), dur = a.duration;
-  if (cur < 30 && !final) return;
+  if (cur < 30 && !ep._synced) return; // tocou só uns segundos: não vira "ouvindo"
   if (dur - cur < 60) { if (!ep._doneSent) { ep._doneSent = true; markDone(ep); } return; }
   if (!final && Date.now() - _lastSync < 60000) return;
   if (ep._synced === cur) return;
@@ -1200,7 +1203,7 @@ function drawPlayer() {
   const a = player.audio, dur = a.duration || player.ep.duration_sec || 0, cur = a.currentTime || 0;
   el.innerHTML = `<div class="pl-bar"><i style="width:${dur ? (cur / dur) * 100 : 0}%"></i></div>
     <img src="${esc(player.ep.artwork || "")}" alt="">
-    <div class="t"><div class="a">${esc(player.ep.title)}</div><div class="b">${fmtDur(Math.max(0, dur - cur))} restantes${player.queue.length ? ` · depois: ${player.queue.length}` : ""}</div></div>
+    <div class="t" data-ep="${player.ep.id}"><div class="a">${esc(player.ep.title)}</div><div class="b">${fmtDur(Math.max(0, dur - cur))} restantes${player.queue.length ? ` · depois: ${player.queue.length}` : ""}</div></div>
     <button class="mini pl-rate" data-act="pl-rate" aria-label="Velocidade">${rateLabel(LS.get("rate", 1))}</button>
     <button class="mini" data-act="pl-back" aria-label="Voltar 15s">−15</button>
     <button class="mini pl-main" data-act="pl-toggle" aria-label="Tocar ou pausar">${a.paused ? I.play : `<svg class="i" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`}</button>
@@ -1339,7 +1342,7 @@ function dayPanel(d) {
     <div class="day-h"><div><div class="gt">Seu dia</div><div class="sub">${d.eps.length} episódio${d.eps.length === 1 ? "" : "s"} · ${fmtLong(d.total)} · ${d.themes} tema${d.themes === 1 ? "" : "s"}</div></div>
       <button class="round small glass" data-act="day-reroll" aria-label="Montar outra">${I.restore}</button></div>
     <div class="filters" style="margin:0;padding:8px 0 4px">${opts.map(([v, l]) => `<button class="chip small ${t === v ? "on" : ""}" data-daytarget="${v}">${l}</button>`).join("")}</div>
-    <div class="day-list">${d.eps.map((e, i) => `<div class="li">
+    <div class="day-list">${d.eps.map((e, i) => `<div class="li" data-ep="${e.id}">
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
       ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>${state.dayOpen === e.id ? `<div class="day-card">${card(e, "queue")}</div>` : ""}`).join("")}</div>
@@ -1353,7 +1356,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 24</div>
+    <div class="hint">Versão 2026-11-09 · 25</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1462,7 +1465,7 @@ function viewWatch() {
       </div>
       ${autoListRow(l.slug)}
       <div style="margin-top:6px">
-      ${items.map((e, i) => `<div class="li">
+      ${items.map((e, i) => `<div class="li" data-ep="${e.id}">
         <span class="num">${i + 1}</span>
         <img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
         <div class="t"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title)} · ${fmtDur(e.duration_sec)}</div></div>
@@ -1700,14 +1703,14 @@ function epSheet(e) {
   </div>`;
 }
 function renderEp() {
-  const el = $("#esheet"), e = state.ep && state.episodes.find((x) => x.id === state.ep);
+  const el = $("#esheet"), e = state.ep && (state.episodes.find((x) => x.id === state.ep) || EPS.get(state.ep));
   if (!e) return closeEp();
   const body = el.querySelector(".es-body"), top = body ? body.scrollTop : 0, same = el.dataset.id === e.id;
   el.innerHTML = epSheet(e); el.dataset.id = e.id;
   if (same) el.querySelector(".es-body").scrollTop = top;
 }
 async function openEp(id) {
-  const e = state.episodes.find((x) => x.id === id); if (!e) return;
+  const e = state.episodes.find((x) => x.id === id) || EPS.get(id); if (!e) return;
   closeFilters(); state.ep = id; renderEp();
   $("#esheet").classList.add("show"); $("#scrim").classList.add("show");
   if (e.description === undefined) { const d = await api(`/episodes/${id}`).catch(() => ({})); e.description = d.description || ""; if (state.ep === id) renderEp(); }
@@ -1913,7 +1916,14 @@ async function act(el) {
 document.addEventListener("click", (ev) => {
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
-  const t = ev.target.closest("[data-act]"); if (t && t.tagName !== "SELECT") { ev.preventDefault(); act(t); return; }
+  const t = ev.target.closest("[data-act]");
+  // tocar em qualquer parte de um episódio abre o detalhe (botões, links e campos continuam com a ação deles)
+  const epEl = ev.target.closest("[data-ep]");
+  if (epEl && !ev.target.closest("a,button,select,input,textarea,summary,label") && (!t || t.contains(epEl) || t.dataset.act === "toggle" || t.dataset.act === "toggle-day")) {
+    if (epEl.closest(".tc-top") && window._tcMovedAt && Date.now() - window._tcMovedAt < 400) return;
+    return openEp(epEl.dataset.ep);
+  }
+  if (t && t.tagName !== "SELECT") { ev.preventDefault(); act(t); return; }
   const dt = ev.target.closest("[data-daytarget]");
   if (dt) { LS.set("dayTarget", Number(dt.dataset.daytarget)); return render(); }
   const ar = ev.target.closest("[data-areason]");
