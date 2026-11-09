@@ -18,7 +18,7 @@
   --bg:#f2f2f7; --blob1:rgba(255,138,76,.22); --blob2:rgba(120,140,255,.14);
   --ink:#0b0b0f; --ink2:#3c3c43; --muted:rgba(60,60,67,.62); --line:rgba(60,60,67,.14);
   --card:rgba(255,255,255,.72); --card-solid:#fff;
-  --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.78);
+  --glass:rgba(255,255,255,.58); --glass-strong:rgba(255,255,255,.78); --bar:rgba(250,250,252,.92);
   --glass-edge:rgba(255,255,255,.75); --glass-shadow:0 10px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
   --hi:inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(0,0,0,.04);
   --fill:rgba(120,120,128,.12); --fill2:rgba(120,120,128,.2);
@@ -29,7 +29,7 @@
   --bg:#000; --blob1:rgba(255,110,50,.22); --blob2:rgba(90,110,255,.18);
   --ink:#f5f5f7; --ink2:#ebebf5; --muted:rgba(235,235,245,.6); --line:rgba(84,84,88,.5);
   --card:rgba(28,28,30,.72); --card-solid:#1c1c1e;
-  --glass:rgba(40,40,44,.52); --glass-strong:rgba(44,44,48,.78);
+  --glass:rgba(40,40,44,.52); --glass-strong:rgba(44,44,48,.78); --bar:rgba(30,30,33,.9);
   --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 10px 40px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
   --hi:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.2);
   --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.36);
@@ -40,7 +40,7 @@
   --bg:#000; --blob1:rgba(255,110,50,.22); --blob2:rgba(90,110,255,.18);
   --ink:#f5f5f7; --ink2:#ebebf5; --muted:rgba(235,235,245,.6); --line:rgba(84,84,88,.5);
   --card:rgba(28,28,30,.72); --card-solid:#1c1c1e;
-  --glass:rgba(40,40,44,.52); --glass-strong:rgba(44,44,48,.78);
+  --glass:rgba(40,40,44,.52); --glass-strong:rgba(44,44,48,.78); --bar:rgba(30,30,33,.9);
   --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 10px 40px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
   --hi:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.2);
   --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.36);
@@ -87,6 +87,7 @@ main{padding:6px 16px calc(120px + env(safe-area-inset-bottom));max-width:980px;
 /* ---------- Floating tab bar ---------- */
 .tabbar{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:max(14px, calc(env(safe-area-inset-bottom) - 6px));
   width:min(calc(100% - 28px),460px);height:68px;border-radius:34px;display:flex;align-items:center;padding:6px;gap:2px}
+.tabbar.glass,#player.glass{background:var(--bar)}
 .tabbar button{flex:1;height:56px;border:0;background:none;border-radius:28px;color:var(--ink2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;position:relative;transition:color .2s,background .2s;cursor:pointer}
 .tabbar button svg.i{width:25px;height:25px}
 .tabbar button.on{color:var(--accent);background:var(--fill)}
@@ -1356,7 +1357,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 25</div>
+    <div class="hint">Versão 2026-11-09 · 26</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
