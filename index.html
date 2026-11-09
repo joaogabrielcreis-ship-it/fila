@@ -296,6 +296,21 @@ details summary::-webkit-details-marker{display:none}
 .sheet{position:fixed;z-index:41;left:50%;bottom:max(14px, env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);border-radius:32px;padding:20px;transform:translate(-50%,calc(100% + 120px));visibility:hidden;transition:transform .35s cubic-bezier(.2,.9,.25,1),visibility 0s .35s}
 .sheet.show{transform:translate(-50%,0);visibility:visible;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .sheet h3{margin:0 0 4px;font-size:22px}
+#esheet{max-height:min(88vh,780px);display:flex;flex-direction:column;padding:0;overflow:hidden}
+.es-grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 0;flex:none}
+.es-h{display:flex;gap:14px;padding:12px 16px 12px 18px;align-items:flex-start;flex:none}
+.es-h img{width:72px;height:72px;border-radius:14px;object-fit:cover;flex:none;background:var(--fill)}
+.es-h .t{flex:1;min-width:0}
+.es-h .show{font-size:13px;color:var(--muted);font-weight:600}
+.es-h .es-title{font-size:18px;font-weight:700;line-height:1.25;margin-top:2px}
+.es-h .meta{margin-top:6px}
+.es-body{overflow-y:auto;padding:2px 18px 14px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
+.es-body .desc{font-size:15px;line-height:1.5;color:var(--ink2);white-space:pre-line}
+.es-sec{margin-top:16px}
+.es-lbl{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.es-foot{flex:none;padding:12px 16px 16px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.es-foot .grow{flex:1}
+.es-foot{flex-wrap:nowrap}.es-foot .btn{white-space:nowrap}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translate(-50%,-220%);opacity:0;visibility:hidden;pointer-events:none;z-index:50;padding:12px 18px;border-radius:22px;font-size:15px;font-weight:600;max-width:92vw;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .toast{transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .25s,visibility 0s .35s}
 .toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .2s}
@@ -365,6 +380,7 @@ html.ilha #ilha{display:flex;flex-direction:column;height:100vh;user-select:none
   <div class="row"><button class="btn quiet" id="sheet-cancel">Cancelar</button><div style="flex:1"></div><button class="btn" id="sheet-paste">Colar</button><button class="btn primary" id="sheet-send">Mandar</button></div>
 </div>
 <div class="sheet glass" id="fsheet"></div>
+<div class="sheet glass" id="esheet" role="dialog" aria-modal="true"></div>
 <div class="toast glass" id="toast"></div>
 <div id="ilha"><div id="ilha-pill"></div><div id="ilha-list" hidden></div></div>
 
@@ -1337,7 +1353,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 23</div>
+    <div class="hint">Versão 2026-11-09 · 24</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1614,6 +1630,7 @@ function setSub(t) { $("#h-sub").textContent = t; }
 
 function render() {
   if (ILHA) return renderIlha(true);
+  if (state.ep) renderEp();
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === (state.tab === "archive" ? "queue" : state.tab)));
   const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
   $("#h-title").textContent = titles[state.tab];
@@ -1637,13 +1654,74 @@ function render() {
 
 // ---------- add sheet ----------
 function closeFilters() { $("#fsheet").classList.remove("show"); $("#scrim").classList.remove("show"); }
+// ---------- detalhe do episódio: folha de baixo (em vez de expandir o card) ----------
+function epMode(e) { return e.status === "inbox" ? "inbox" : e.status === "done" ? "done" : ["archived", "dismissed"].includes(e.status) ? "archive" : "queue"; }
+function epSheet(e) {
+  const mode = epMode(e), v = validity(e), isYT = e.platform === "youtube" || /youtu\.?be/.test(e.url || "");
+  const link = isYT ? (e.url || e.apple_url) : appleLink(e);
+  const lists = !isYT && (e.audio_url || e.platform === "apple") && mode !== "done"
+    ? state.lists.map((l) => { const on = inList(l.slug, e.id); return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace("Fila · ", ""))}</button>`; }).join("") : "";
+  const main = {
+    queue: `<button class="btn primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
+    inbox: `<button class="btn quiet" data-act="dismiss" data-id="${e.id}">${I.x}Descartar</button><button class="btn primary" data-act="keep" data-id="${e.id}">${I.check}Manter</button>`,
+    done: e.notion_page_id ? `<a class="btn" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank" rel="noopener">${I.ext}Notion</a>` : `<button class="btn" data-act="notion" data-id="${e.id}">Enviar pro Notion</button>`,
+    archive: `<button class="btn" data-act="restore" data-id="${e.id}">${I.restore}Restaurar</button><button class="btn primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
+  }[mode];
+  return `<div class="es-grab"></div>
+  <div class="es-h">
+    <img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
+    <div class="t">
+      <div class="show">${esc(e.show_title || "")}</div>
+      <div class="es-title">${esc(e.title)}</div>
+      <div class="meta"><span>${ago(e.pub_date)}</span><span>·</span><span>${fmtDur(e.duration_sec)}</span>${progress(e) ? `<span class="prog">${progress(e)}</span>` : ""}</div>
+    </div>
+    <button class="round small glass" data-act="ep-close" aria-label="Fechar">${I.x}</button>
+  </div>
+  <div class="es-body">
+    <div class="meta" style="margin:0 0 12px">
+      ${isYT ? `<span class="pill yt">YouTube</span>` : ""}
+      ${e.auto_reason ? `<span class="pill auto" title="${esc(e.auto_reason)}">Automático</span>` : ""}
+      <span class="pill">${esc(e.theme || "Sem tema")}</span>
+      ${mode === "done" ? `<span class="pill">Ouvido ${ago(e.done_at).toLowerCase()}</span>` : `<span class="pill ${v.cls}">${v.label}</span>`}
+      ${(e.guests || []).slice(0, 3).map((g) => `<button class="pill guest" data-explore="guest" data-v="${esc(g)}">${I.person}${esc(g)}</button>`).join("")}
+    </div>
+    ${mode === "queue" && prio(e).why.length ? `<div class="why" style="margin-bottom:10px">${esc(prio(e).why.join(" · "))}</div>` : ""}
+    <div class="desc">${e.description === undefined ? "Carregando…" : esc(e.description || "Sem descrição.")}</div>
+    ${lists ? `<div class="es-sec"><div class="es-lbl">Listas do Watch</div><div class="wrap">${lists}</div></div>` : ""}
+    <div class="es-sec"><div class="es-lbl">Validade</div><div class="wrap">${["news", "tech", "evergreen"].map((k) => `<button class="chip ${e.kind === k ? "on" : ""}" data-act="kind" data-kind="${k}" data-id="${e.id}">${KIND_LABEL[k]}</button>`).join("")}</div></div>
+    <div class="es-sec"><div class="es-lbl">Tema</div><select class="chip" data-act="theme" data-id="${e.id}">${(state.config.themes || []).map((t) => `<option ${t === e.theme ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
+    ${e.shelves?.length ? `<div class="es-sec"><div class="es-lbl">Estantes</div><div class="shelves">${e.shelves.map((x) => `<span class="shelf">${esc(x)}</span>`).join("")}</div></div>` : ""}
+    ${mode === "queue" ? `<div class="es-sec"><div class="wrap"><button class="chip" data-act="archive" data-id="${e.id}">Arquivar</button><button class="chip" data-act="dismiss" data-id="${e.id}">Descartar</button></div></div>` : ""}
+  </div>
+  <div class="es-foot">
+    ${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">${I.ext}${isYT ? "YouTube" : "Podcasts"}</a>` : ""}
+    ${!isYT && mode !== "done" ? (IS_MAC ? `<a class="btn" href="filailha://play#id=${e.id}">${I.play}Na ilha</a>` : `<button class="btn" data-act="play" data-id="${e.id}">${I.play}Ouvir</button>`) : ""}
+    <div class="grow"></div>${main}
+  </div>`;
+}
+function renderEp() {
+  const el = $("#esheet"), e = state.ep && state.episodes.find((x) => x.id === state.ep);
+  if (!e) return closeEp();
+  const body = el.querySelector(".es-body"), top = body ? body.scrollTop : 0, same = el.dataset.id === e.id;
+  el.innerHTML = epSheet(e); el.dataset.id = e.id;
+  if (same) el.querySelector(".es-body").scrollTop = top;
+}
+async function openEp(id) {
+  const e = state.episodes.find((x) => x.id === id); if (!e) return;
+  closeFilters(); state.ep = id; renderEp();
+  $("#esheet").classList.add("show"); $("#scrim").classList.add("show");
+  if (e.description === undefined) { const d = await api(`/episodes/${id}`).catch(() => ({})); e.description = d.description || ""; if (state.ep === id) renderEp(); }
+}
+function closeEp() { state.ep = null; const el = $("#esheet"); el.classList.remove("show"); el.dataset.id = ""; if (!$("#fsheet").classList.contains("show") && !$("#sheet").classList.contains("show")) $("#scrim").classList.remove("show"); }
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && state.ep) closeEp(); });
 function openSheet(show) {
   if (!show) closeFilters();
   $("#sheet").classList.toggle("show", show); $("#scrim").classList.toggle("show", show);
   if (show) setTimeout(() => $("#add-url").focus(), 250); else $("#add-url").blur();
 }
 $("#btn-add").onclick = () => openSheet(true);
-$("#scrim").onclick = $("#sheet-cancel").onclick = () => openSheet(false);
+$("#scrim").onclick = () => { closeEp(); openSheet(false); };
+$("#sheet-cancel").onclick = () => openSheet(false);
 $("#sheet-paste").onclick = async () => { try { $("#add-url").value = await navigator.clipboard.readText(); } catch { toast("Cole com toque longo no campo"); } };
 $("#sheet-send").onclick = async () => {
   const u = $("#add-url").value.trim(); if (!u) return;
@@ -1657,7 +1735,10 @@ function patchLocal(id, patch) { const e = state.episodes.find((x) => x.id === i
 async function act(el) {
   const { act: a, id, slug } = el.dataset;
   try {
-    if (a === "toggle") {
+    if (a === "ep-close") return closeEp();
+    if (["done", "keep", "dismiss", "archive", "restore", "play"].includes(a) && state.ep === id) closeEp();
+    if (a === "toggle") return openEp(id);
+    if (a === "toggle-old") {
       state.open[id] = !state.open[id]; render();
       const e = state.episodes.find((x) => x.id === id);
       if (state.open[id] && e && e.description === undefined) {
@@ -1725,7 +1806,8 @@ async function act(el) {
       const k = `daySkip:${today()}`; const cur = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening")).eps.map((e) => e.id);
       LS.set(k, [...LS.get(k, []), ...cur]); return render();
     }
-    if (a === "toggle-day") {
+    if (a === "toggle-day") return openEp(id);
+    if (a === "toggle-day-old") {
       state.dayOpen = state.dayOpen === id ? null : id; if (state.dayOpen) state.open[id] = true; render();
       const e = state.episodes.find((x) => x.id === id);
       if (state.dayOpen && e && e.description === undefined) { const d = await api(`/episodes/${id}`).catch(() => ({})); e.description = d.description || ""; render(); }
@@ -1841,7 +1923,7 @@ document.addEventListener("click", (ev) => {
   const cl = ev.target.closest("[data-clear]");
   if (cl) { state.f[cl.dataset.clear] = ""; LS.set("filters", state.f); return render(); }
   const xp = ev.target.closest("[data-explore]");
-  if (xp) { const k = xp.dataset.explore; state.f[k] = state.f[k] === xp.dataset.v ? "" : xp.dataset.v; LS.set("filters", state.f); state.group = "list"; LS.set("group", "list"); state.limit = 60; window.scrollTo(0, 0); return render(); }
+  if (xp) { closeEp(); const k = xp.dataset.explore; state.f[k] = state.f[k] === xp.dataset.v ? "" : xp.dataset.v; LS.set("filters", state.f); state.group = "list"; LS.set("group", "list"); state.limit = 60; window.scrollTo(0, 0); return render(); }
   const rg = ev.target.closest("[data-range]");
   if (rg) { state.doneRange = rg.dataset.range; LS.set("doneRange", state.doneRange); state.rngMore = {}; return render(); }
   const srt = ev.target.closest("[data-sortkey]");
