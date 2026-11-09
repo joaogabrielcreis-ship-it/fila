@@ -1357,7 +1357,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 26</div>
+    <div class="hint">Versão 2026-11-09 · 27</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1414,7 +1414,11 @@ function viewDone() {
     return Object.values(o).map((r) => ({ ...r, min: Math.round(r.min) })).sort((a, c) => c.min - a.min); };
   const data = rd || { count: local.length, min: local.reduce((s, e) => s + (e.duration_sec || 0) / 60, 0), themes: agg("theme").slice(0, 12), shows: agg("show").slice(0, 20), episodes: local };
   const byId = new Map(state.episodes.map((e) => [e.id, e]));
-  const eps = (data.episodes || []).map((e) => byId.get(e.id) || e).filter((e) => e.status === "done");
+  const fromSrv = (data.episodes || []).map((e) => byId.get(e.id) || e).filter((e) => e.status === "done");
+  // junta o que você marcou depois que a lista veio do servidor (aparece na hora, no topo)
+  const srvIds = new Set(fromSrv.map((e) => e.id));
+  const newest = fromSrv.length ? Math.max(...fromSrv.map((e) => +new Date(e.done_at) || 0)) : 0;
+  const eps = [...local.filter((e) => !srvIds.has(e.id) && (!rd || +new Date(e.done_at) >= newest)), ...fromSrv].sort((a, c) => new Date(c.done_at) - new Date(a.done_at));
   const tail = rd ? "" : state.rng?.err ? " · só o que está no aparelho" : " · carregando…";
   setSub(total ? `${total.toLocaleString("pt-BR")} episódios · ${fmtLong((st.min_total || 0) * 60)}` : "Seu histórico de escuta");
   const bars = (rows, key, lim, mk) => {
