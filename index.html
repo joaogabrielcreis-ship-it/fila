@@ -1218,7 +1218,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 15</div>
+    <div class="hint">Versão 2026-11-09 · 16</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1461,6 +1461,7 @@ function viewSettings() {
     <div class="hint">Deslizar pra direita na Fila manda pra:</div>
     <div class="row"><select class="chip" id="swipe-pick" style="flex:1">${state.lists.map((l) => `<option value="${l.slug}" ${state.swipeList === l.slug ? "selected" : ""}>${esc(l.title)}</option>`).join("")}</select></div>
     <div class="row"><input type="password" id="token" value="${esc(LS.get("token", ""))}" placeholder="Token de acesso"><button class="btn primary" data-act="save-token">Salvar</button></div>
+    ${/Mac/.test(navigator.platform) && !("ontouchend" in document) && LS.get("token", "") ? `<div class="row"><a class="btn" href="filailha://connect#t=${encodeURIComponent(LS.get("token", ""))}">Conectar a ilha do Mac</a></div><div class="hint">Abre o app Fila Ilha já conectado (o mini player que flutua sobre os outros apps).</div>` : ""}
   </div>
   </div>`;
 }
