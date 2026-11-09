@@ -301,7 +301,19 @@ details summary::-webkit-details-marker{display:none}
 #ilha{display:none}
 html.ilha,html.ilha body{background:transparent!important;overflow:hidden;min-height:0;height:100%}
 html.ilha body>*:not(#ilha){display:none!important}
-html.ilha #ilha{display:flex;align-items:center;gap:10px;height:100vh;box-sizing:border-box;padding:0 12px 0 12px;position:relative;user-select:none;-webkit-user-select:none;cursor:default}
+html.ilha #ilha{display:flex;flex-direction:column;height:100vh;user-select:none;-webkit-user-select:none;cursor:default}
+#ilha-pill{display:flex;align-items:center;gap:10px;height:68px;flex:none;box-sizing:border-box;padding:0 12px;position:relative}
+#ilha-list{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 8px 8px;border-top:.5px solid var(--line)}
+#ilha-list[hidden]{display:none}
+#ilha #ilha-list input{flex:none;margin:8px 4px 6px}
+#ilha-rows{flex:1;overflow:auto}
+#ilha-rows h4{margin:10px 6px 4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+#ilha .ir{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:9px;width:100%;padding:5px 6px;border-radius:10px;cursor:default}
+#ilha .ir:hover{background:var(--fill)}
+#ilha .ir.cur{background:var(--accent-soft)}
+#ilha .ir img{width:34px;height:34px;border-radius:7px}
+#ilha .ir .a{font-size:13px}#ilha .ir .b{font-size:11px}
+#ilha .ir .t{flex:1;min-width:0}
 #ilha img{width:46px;height:46px;border-radius:11px;object-fit:cover;background:var(--fill);flex:none}
 #ilha .t{flex:1;min-width:0;line-height:1.25}
 #ilha .a{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -350,7 +362,7 @@ html.ilha #ilha{display:flex;align-items:center;gap:10px;height:100vh;box-sizing
 </div>
 <div class="sheet glass" id="fsheet"></div>
 <div class="toast glass" id="toast"></div>
-<div id="ilha"></div>
+<div id="ilha"><div id="ilha-pill"></div><div id="ilha-list" hidden></div></div>
 
 <script>
 const API = "https://khevvlkznbewbktlmryt.supabase.co/functions/v1/fila";
@@ -362,6 +374,7 @@ const hashT = new URLSearchParams(location.hash.slice(1)).get("t");
 // mantém o #t= na URL: assim "Adicionar à Tela de Início" já leva o token pro app instalado
 if (hashT) LS.set("token", hashT);
 const ILHA = new URLSearchParams(location.search).has("ilha");
+const IS_MAC = /Mac/.test(navigator.platform) && !("ontouchend" in document);
 if (ILHA) document.documentElement.classList.add("ilha");
 
 const state = {
@@ -591,6 +604,7 @@ function cardInner(e, mode) {
     inbox: `<div class="scroll"><button class="btn quiet" data-act="dismiss" data-id="${e.id}">${I.x}Descartar</button></div>
             <button class="btn primary" data-act="keep" data-id="${e.id}">${I.check}Manter</button>`,
     queue: `<div class="scroll">${listBtns}</div>
+            ${IS_MAC ? `<a class="btn small" href="filailha://play#id=${e.id}">${I.play}Na ilha</a>` : ""}
             <button class="btn primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
     done: e.notion_page_id
       ? `<div class="scroll"><span class="hint" style="margin:0">Ouvido ${ago(e.done_at).toLowerCase()}</span></div><a class="btn small" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank">${I.ext}Notion</a>`
@@ -1164,10 +1178,57 @@ async function ilhaDone(ep) {
   patchLocal(ep.id, { status: "done", done_at: new Date().toISOString() });
   try { await api(`/episodes/${ep.id}`, { status: "done" }); } catch (_) {}
 }
+// lista para escolher: abre ao clicar no título (o app nativo chama ilhaToggle)
+const ILHA_H = 68, ILHA_OPEN_H = 440;
+function ilhaToggle(force) {
+  state.ilhaOpen = force ?? !state.ilhaOpen;
+  const L = $("#ilha-list");
+  if (!state.ilhaOpen) { L.hidden = true; L.innerHTML = ""; ilhaPost({ height: ILHA_H }); return; }
+  if (state.needToken || !state.loaded) { state.ilhaOpen = false; return; }
+  state.ilhaQ = "";
+  L.innerHTML = `<input id="ilha-q" placeholder="Buscar na fila" autocomplete="off"><div id="ilha-rows"></div>`;
+  L.hidden = false; ilhaPost({ height: ILHA_OPEN_H });
+  renderIlhaRows();
+}
+function renderIlhaRows() {
+  const R = $("#ilha-rows"); if (!R) return;
+  const q = norm1(state.ilhaQ || "").trim(), pool = ilhaPool(), cur = player.ep?.id, seen = new Set();
+  const byPrio = (a) => [...a].sort((x, y) => prio(y).score - prio(x).score);
+  const take = (arr, n = 60) => arr.filter((e) => !seen.has(e.id) && seen.add(e.id)).slice(0, n);
+  const secs = q
+    ? [["Resultados", take(byPrio(pool.filter((e) => norm1(`${e.title} ${e.show_title} ${e.theme || ""}`).includes(q))))]]
+    : [["Continuar", take(pool.filter((e) => e.status === "listening"))], ["Seu dia", take(dayPlan(pool).eps)], ["Fila", take(byPrio(pool.filter((e) => e.status === "queue")))]];
+  state._ilhaSecs = Object.fromEntries(secs.map(([n, a]) => [n, a.map((e) => e.id)]));
+  const row = (e, n) => `<button class="ir ${e.id === cur ? "cur" : ""}" data-act="ilha-pick" data-id="${e.id}" data-sec="${n}">
+      <img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'"><div class="t"><div class="a">${esc(e.title)}</div>
+      <div class="b">${esc(e.show_title || "")}${e.duration_sec ? ` · ${fmtDur(Math.max(0, e.duration_sec - (LS.get(`pos:${e.id}`, 0) || e.playhead_sec || 0)))}` : ""}</div></div></button>`;
+  const html = secs.filter(([, a]) => a.length).map(([n, a]) => `<h4>${n}</h4>${a.map((e) => row(e, n)).join("")}`).join("");
+  R.innerHTML = html || `<div class="b" style="padding:12px 6px">Nada encontrado</div>`;
+}
+function ilhaPick(id, sec) {
+  const ids = state._ilhaSecs?.[sec] || [], i = ids.indexOf(id), byId = (x) => state.episodes.find((e) => e.id === x);
+  const ep = byId(id); if (!ep) return;
+  ilhaToggle(false); playerSave(); playHere(ep, ids.slice(i + 1).map(byId).filter(Boolean));
+}
+// chamado pelo app nativo: filailha://play#id=… (botão "Tocar na ilha" do Fila) e filailha://day
+async function ilhaPlayId(id) {
+  if (!state.loaded) await load();
+  const ep = state.episodes.find((e) => e.id === id);
+  if (!ep) { await load(); }
+  const e2 = state.episodes.find((e) => e.id === id);
+  if (e2) { ilhaToggle(false); playerSave(); playHere(e2, []); } else toast("Episódio não encontrado");
+}
+async function ilhaPlayDay() {
+  if (!state.loaded) await load();
+  const d = dayPlan(ilhaPool()).eps; if (d.length) { ilhaToggle(false); playerSave(); playHere(d[0], d.slice(1)); }
+}
+document.addEventListener("input", (ev) => { if (ev.target.id === "ilha-q") { state.ilhaQ = ev.target.value; renderIlhaRows(); } });
+document.addEventListener("keydown", (ev) => { if (ILHA && ev.key === "Escape" && state.ilhaOpen) ilhaToggle(false); });
 const ilhaPost = (m) => { try { webkit.messageHandlers.ilha.postMessage(m); } catch (_) {} };
 let _ilhaKey = "";
-function renderIlha() {
-  const box = $("#ilha");
+function renderIlha(full) {
+  const box = $("#ilha-pill");
+  if (full && state.ilhaOpen) renderIlhaRows();
   if (state.needToken) {
     if (_ilhaKey !== "token") { _ilhaKey = "token"; ilhaPost({ drag: 0 });
       box.innerHTML = `<input type="password" id="token" placeholder="Cole o token do Fila" autocomplete="off"><button class="go" data-act="save-token">Conectar</button>`; }
@@ -1189,6 +1250,7 @@ function renderIlha() {
         <button data-act="pl-next" title="Próximo">${'<svg class="i" viewBox="0 0 24 24"><path d="M6 5l9 7-9 7z" fill="currentColor" stroke="none"/><path d="M18 5v14"/></svg>'}</button>
       </div><div class="bar"><i id="ilha-p"></i></div>`;
     ilhaPost({ drag: 12 + 46 + 10 + Math.max(0, box.querySelector(".t").offsetWidth) });
+    if (state.ilhaOpen) renderIlhaRows();
   }
   const dur = (ep && a?.duration) || show.duration_sec || 0;
   const cur = ep ? a.currentTime || 0 : (LS.get(`pos:${show.id}`, 0) || show.playhead_sec || 0);
@@ -1208,7 +1270,7 @@ function dayPanel(d) {
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
       ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>`).join("")}</div>
-    <div class="row"><button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button><button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
+    <div class="row">${IS_MAC ? `<a class="btn" href="filailha://day">${I.play}Na ilha</a>` : `<button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button>`}<button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
   </div>`;
 }
 
@@ -1218,7 +1280,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 16</div>
+    <div class="hint">Versão 2026-11-09 · 17</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1469,7 +1531,7 @@ function viewSettings() {
 function setSub(t) { $("#h-sub").textContent = t; }
 
 function render() {
-  if (ILHA) return renderIlha();
+  if (ILHA) return renderIlha(true);
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === (state.tab === "archive" ? "queue" : state.tab)));
   const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
   $("#h-title").textContent = titles[state.tab];
@@ -1543,6 +1605,7 @@ async function act(el) {
     if (a === "pl-fwd") { player.audio.currentTime += 30; return; }
     if (a === "pl-next") return ilhaNext();
     if (a === "ilha-start") return ilhaStart();
+    if (a === "ilha-pick") return ilhaPick(id, el.dataset.sec);
     if (a === "pl-close") { playerSave(); player.audio.pause(); player.ep = null; player.queue = []; return drawPlayer(); }
     if (a === "open-search") { state.prevTab = state.tab === "search" ? state.prevTab : state.tab; state.tab = "search"; render(); setTimeout(() => $("#q")?.focus(), 50); return; }
     if (a === "q-clear") { state.q = ""; render(); $("#q")?.focus(); return; }
