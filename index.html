@@ -251,6 +251,7 @@ select.chip.time{height:30px;font-size:13px;padding:0 24px 0 10px}
 .li img{width:52px;height:52px;border-radius:11px;object-fit:cover;background:var(--fill)}
 .num{width:26px;text-align:center;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .player{position:fixed;z-index:29;left:50%;transform:translateX(-50%);bottom:calc(max(14px, env(safe-area-inset-bottom) - 6px) + 76px);width:min(calc(100% - 20px),560px);border-radius:22px;padding:10px 10px 10px 10px;display:flex;align-items:center;gap:10px;overflow:hidden}
+.day-x{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 10px 34px}
 .player img{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--fill)}
 .player .t{flex:1;min-width:0}.player .a{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player .b{font-size:13px;color:var(--muted)}
 .player .mini{font-size:12px;font-weight:700}.player .pl-main{width:42px;height:42px;background:var(--accent);color:var(--on-accent)}
@@ -322,6 +323,8 @@ html.ilha #ilha{display:flex;flex-direction:column;height:100vh;user-select:none
 #ilha button{border:0;background:transparent;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;padding:0;font-size:11px;font-weight:700;color:var(--ink)}
 #ilha button:hover{background:var(--fill)}
 #ilha button svg.i{width:19px;height:19px}
+#ilha button.rate{width:auto;min-width:32px;padding:0 6px;border-radius:16px;font-size:11px}
+.player .pl-rate{width:auto;padding:0 8px;border-radius:16px}
 #ilha button.main{width:38px;height:38px;background:var(--accent);color:var(--on-accent)}
 #ilha button.main svg.i{width:18px;height:18px}
 #ilha .bar{position:absolute;left:14px;right:14px;bottom:5px;height:3px;border-radius:2px;background:var(--fill)}
@@ -1115,6 +1118,10 @@ function playBtn(e) {
   return "";
 }
 const player = { audio: null, ep: null, queue: [] };
+const RATES = [1, 1.2, 1.5, 1.75, 2, 0.8];
+const rateLabel = (r) => `${String(r).replace(".", ",")}×`;
+function applyRate() { const a = player.audio, r = LS.get("rate", 1); if (a) { a.defaultPlaybackRate = r; a.playbackRate = r; } }
+function cycleRate() { const r = LS.get("rate", 1); LS.set("rate", RATES[(RATES.indexOf(r) + 1) % RATES.length] ?? 1); applyRate(); _ilhaKey = ""; drawPlayer(); }
 function playerSave() { const a = player.audio; if (a && player.ep) { LS.set(`pos:${player.ep.id}`, Math.floor(a.currentTime)); LS.set(`posAt:${player.ep.id}`, Date.now()); } }
 // manda pro servidor onde você parou (vira "ouvindo" em todo lugar) e, faltando < 1 min, marca como ouvido.
 // Roda ao pausar, a cada minuto tocando, ao trocar de episódio e ao fechar.
@@ -1154,11 +1161,11 @@ async function playHere(ep, queue = []) {
   }
   player.ep = ep; player.queue = queue;
   if (ILHA) LS.set("ilhaLast", { id: ep.id, q: queue.map((x) => x.id) });
-  player.audio.src = ep.audio_url;
+  player.audio.src = ep.audio_url; applyRate();
   // retoma do ponto mais recente: o deste aparelho ou o do servidor (outro aparelho / Apple)
   const lp = LS.get(`pos:${ep.id}`, 0), lAt = LS.get(`posAt:${ep.id}`, 0), sAt = ep.apple_played_at ? +new Date(ep.apple_played_at) : 0;
   const pos = (lp && lAt >= sAt ? lp : ep.playhead_sec || lp) || 0;
-  player.audio.addEventListener("loadedmetadata", () => { if (pos > 5) player.audio.currentTime = pos; }, { once: true });
+  player.audio.addEventListener("loadedmetadata", () => { if (pos > 5) player.audio.currentTime = pos; applyRate(); }, { once: true });
   player.audio.play().catch(() => {});
   if ("mediaSession" in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({ title: ep.title, artist: ep.show_title || "", artwork: ep.artwork ? [{ src: ep.artwork, sizes: "600x600" }] : [] });
@@ -1177,6 +1184,7 @@ function drawPlayer() {
   el.innerHTML = `<div class="pl-bar"><i style="width:${dur ? (cur / dur) * 100 : 0}%"></i></div>
     <img src="${esc(player.ep.artwork || "")}" alt="">
     <div class="t"><div class="a">${esc(player.ep.title)}</div><div class="b">${fmtDur(Math.max(0, dur - cur))} restantes${player.queue.length ? ` · depois: ${player.queue.length}` : ""}</div></div>
+    <button class="mini pl-rate" data-act="pl-rate" aria-label="Velocidade">${rateLabel(LS.get("rate", 1))}</button>
     <button class="mini" data-act="pl-back" aria-label="Voltar 15s">−15</button>
     <button class="mini pl-main" data-act="pl-toggle" aria-label="Tocar ou pausar">${a.paused ? I.play : `<svg class="i" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`}</button>
     <button class="mini" data-act="pl-close" aria-label="Fechar">${I.x}</button>`;
@@ -1264,6 +1272,7 @@ function renderIlha(full) {
     box.innerHTML = `<img src="${esc(show.artwork || "")}" alt="">
       <div class="t"><div class="a">${esc(show.title)}</div><div class="b" id="ilha-b"></div></div>
       <div class="btns">
+        <button class="rate" data-act="pl-rate" title="Velocidade">${rateLabel(LS.get("rate", 1))}</button>
         <button data-act="pl-back" title="Voltar 15s" ${ep ? "" : "disabled"}>−15</button>
         <button class="main" data-act="${ep ? "pl-toggle" : "ilha-start"}" title="${playing ? "Pausar" : "Tocar"}">${playing ? PAUSE : I.play}</button>
         <button data-act="pl-fwd" title="Avançar 30s" ${ep ? "" : "disabled"}>+30</button>
@@ -1288,10 +1297,22 @@ function ilhaCmd(c, v) {
   if (c === "back" && player.ep) au.currentTime -= 15;
   if (c === "fwd" && player.ep) au.currentTime += 30;
   if (c === "next") ilhaNext();
+  if (c === "rate") cycleRate();
   if (c === "seek") {
     if (player.ep) au.currentTime = v;
     else { const u = ilhaUpNext(); if (u) { LS.set(`pos:${u.ep.id}`, Math.floor(v)); _ilhaKey = ""; renderIlha(); } }
   }
+}
+function appleLink(e) {
+  return epLink(e) || `https://podcasts.apple.com/br/search?term=${encodeURIComponent(`${e.show_title || ""} ${e.title}`.trim())}`;
+}
+function dayActions(e) {
+  const yt = platformOf(e) === "youtube";
+  return `<div class="day-x">
+    <a class="btn small" href="${esc(appleLink(e))}" target="_blank" rel="noopener">${I.play}${yt ? "Abrir no YouTube" : epLink(e) ? "Abrir no Podcasts" : "Buscar no Podcasts"}</a>
+    ${yt ? "" : `<button class="btn small" data-act="play" data-id="${e.id}">${I.play}Ouvir aqui</button>`}
+    ${IS_MAC && !yt ? `<a class="btn small" href="filailha://play#id=${e.id}">${I.play}Na ilha</a>` : ""}
+  </div>`;
 }
 function dayPanel(d) {
   const t = LS.get("dayTarget", 90);
@@ -1304,7 +1325,7 @@ function dayPanel(d) {
     <div class="day-list">${d.eps.map((e, i) => `<div class="li">
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
-      ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>`).join("")}</div>
+      ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>${state.dayOpen === e.id ? dayActions(e) : ""}`).join("")}</div>
     <div class="row">${IS_MAC ? `<a class="btn" href="filailha://day">${I.play}Na ilha</a>` : `<button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button>`}<button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
   </div>`;
 }
@@ -1315,7 +1336,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 21</div>
+    <div class="hint">Versão 2026-11-09 · 22</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1661,6 +1682,7 @@ async function act(el) {
       const [first, ...rest] = d.eps; return first && playHere(first, rest);
     }
     if (a === "pl-toggle") { const au = player.audio; au.paused ? au.play() : au.pause(); return; }
+    if (a === "pl-rate") return cycleRate();
     if (a === "pl-back") { player.audio.currentTime -= 15; return; }
     if (a === "pl-fwd") { player.audio.currentTime += 30; return; }
     if (a === "pl-next") return ilhaNext();
@@ -1702,7 +1724,7 @@ async function act(el) {
       const k = `daySkip:${today()}`; const cur = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening")).eps.map((e) => e.id);
       LS.set(k, [...LS.get(k, []), ...cur]); return render();
     }
-    if (a === "toggle-day") { state.group = "list"; state.open[id] = true; render(); document.querySelector(`[data-sid="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (a === "toggle-day") { state.dayOpen = state.dayOpen === id ? null : id; return render(); }
     if (a === "day-send") {
       const d = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening"));
       el.disabled = true; toast("Montando a Fila · Hoje…");
