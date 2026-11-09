@@ -297,6 +297,25 @@ details summary::-webkit-details-marker{display:none}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translate(-50%,-220%);opacity:0;visibility:hidden;pointer-events:none;z-index:50;padding:12px 18px;border-radius:22px;font-size:15px;font-weight:600;max-width:92vw;transition:transform .35s cubic-bezier(.2,.9,.25,1)}
 .toast{transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .25s,visibility 0s .35s}
 .toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .35s cubic-bezier(.2,.9,.25,1),opacity .2s}
+/* ---------- Ilha (mini player flutuante do Mac: ?ilha=1) ---------- */
+#ilha{display:none}
+html.ilha,html.ilha body{background:transparent!important;overflow:hidden;min-height:0;height:100%}
+html.ilha body>*:not(#ilha){display:none!important}
+html.ilha #ilha{display:flex;align-items:center;gap:10px;height:100vh;box-sizing:border-box;padding:0 12px 0 12px;position:relative;user-select:none;-webkit-user-select:none;cursor:default}
+#ilha img{width:46px;height:46px;border-radius:11px;object-fit:cover;background:var(--fill);flex:none}
+#ilha .t{flex:1;min-width:0;line-height:1.25}
+#ilha .a{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ilha .b{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ilha .btns{display:flex;align-items:center;gap:2px;flex:none}
+#ilha button{border:0;background:transparent;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;padding:0;font-size:11px;font-weight:700;color:var(--ink)}
+#ilha button:hover{background:var(--fill)}
+#ilha button svg.i{width:19px;height:19px}
+#ilha button.main{width:38px;height:38px;background:var(--accent);color:var(--on-accent)}
+#ilha button.main svg.i{width:18px;height:18px}
+#ilha .bar{position:absolute;left:14px;right:14px;bottom:5px;height:3px;border-radius:2px;background:var(--fill)}
+#ilha .bar i{display:block;height:100%;border-radius:2px;background:var(--accent);width:0}
+#ilha input{flex:1;min-width:0;border:0;border-radius:10px;padding:7px 10px;background:var(--fill);font-size:13px;outline:none}
+#ilha .go{width:auto;border-radius:10px;padding:0 12px;background:var(--accent);color:var(--on-accent);font-size:13px}
 </style>
 </head>
 <body>
@@ -331,6 +350,7 @@ details summary::-webkit-details-marker{display:none}
 </div>
 <div class="sheet glass" id="fsheet"></div>
 <div class="toast glass" id="toast"></div>
+<div id="ilha"></div>
 
 <script>
 const API = "https://khevvlkznbewbktlmryt.supabase.co/functions/v1/fila";
@@ -341,6 +361,8 @@ const LS = {
 const hashT = new URLSearchParams(location.hash.slice(1)).get("t");
 // mantém o #t= na URL: assim "Adicionar à Tela de Início" já leva o token pro app instalado
 if (hashT) LS.set("token", hashT);
+const ILHA = new URLSearchParams(location.search).has("ilha");
+if (ILHA) document.documentElement.classList.add("ilha");
 
 const state = {
   tab: LS.get("tab", "queue"),
@@ -1093,9 +1115,10 @@ async function playHere(ep, queue = []) {
     player.audio = new Audio(); player.audio.preload = "auto";
     player.audio.addEventListener("timeupdate", () => { drawPlayer(); if (Math.floor(player.audio.currentTime) % 10 === 0) playerSave(); });
     player.audio.addEventListener("play", drawPlayer); player.audio.addEventListener("pause", () => { playerSave(); drawPlayer(); });
-    player.audio.addEventListener("ended", () => { LS.set(`pos:${player.ep.id}`, 0); const next = player.queue.shift(); if (next) playHere(next, player.queue); else drawPlayer(); });
+    player.audio.addEventListener("ended", () => { LS.set(`pos:${player.ep.id}`, 0); if (ILHA) ilhaDone(player.ep); const next = player.queue.shift(); if (next) playHere(next, player.queue); else drawPlayer(); });
   }
   player.ep = ep; player.queue = queue;
+  if (ILHA) LS.set("ilhaLast", { id: ep.id, q: queue.map((x) => x.id) });
   player.audio.src = ep.audio_url;
   const pos = LS.get(`pos:${ep.id}`, 0) || ep.playhead_sec || 0;
   player.audio.addEventListener("loadedmetadata", () => { if (pos > 5) player.audio.currentTime = pos; }, { once: true });
@@ -1109,6 +1132,7 @@ async function playHere(ep, queue = []) {
   drawPlayer();
 }
 function drawPlayer() {
+  if (ILHA) return renderIlha();
   let el = document.getElementById("player");
   if (!player.ep) { el?.remove(); document.body.classList.remove("has-player"); return; }
   if (!el) { el = document.createElement("div"); el.id = "player"; el.className = "player glass"; document.body.appendChild(el); document.body.classList.add("has-player"); }
@@ -1119,6 +1143,58 @@ function drawPlayer() {
     <button class="mini" data-act="pl-back" aria-label="Voltar 15s">−15</button>
     <button class="mini pl-main" data-act="pl-toggle" aria-label="Tocar ou pausar">${a.paused ? I.play : `<svg class="i" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`}</button>
     <button class="mini" data-act="pl-close" aria-label="Fechar">${I.x}</button>`;
+}
+// ---------- Ilha: mini player flutuante do Mac (app nativo carrega ?ilha=1) ----------
+const PAUSE = `<svg class="i" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>`;
+const ilhaPool = () => state.episodes.filter((e) => e.status === "queue" || e.status === "listening");
+function ilhaUpNext() {
+  // o que tocar quando nada está tocando: o último da ilha (se ainda está na fila), senão o Seu dia
+  const last = LS.get("ilhaLast", null), pool = ilhaPool(), byId = (id) => pool.find((e) => e.id === id);
+  if (last && byId(last.id)) return { ep: byId(last.id), queue: last.q.map(byId).filter(Boolean), resume: true };
+  const d = dayPlan(pool); return d.eps.length ? { ep: d.eps[0], queue: d.eps.slice(1), resume: false } : null;
+}
+function ilhaStart() { const u = ilhaUpNext(); if (u) playHere(u.ep, u.queue); }
+function ilhaNext() {
+  if (player.ep) { playerSave(); const n = player.queue.shift(); if (n) return playHere(n, player.queue); }
+  const skip = (state.ilhaSkip ||= new Set()); if (player.ep) skip.add(player.ep.id);
+  const d = dayPlan(ilhaPool().filter((e) => !skip.has(e.id))).eps;
+  if (d.length) playHere(d[0], d.slice(1)); else toast("Fim do Seu dia");
+}
+async function ilhaDone(ep) {
+  patchLocal(ep.id, { status: "done", done_at: new Date().toISOString() });
+  try { await api(`/episodes/${ep.id}`, { status: "done" }); } catch (_) {}
+}
+const ilhaPost = (m) => { try { webkit.messageHandlers.ilha.postMessage(m); } catch (_) {} };
+let _ilhaKey = "";
+function renderIlha() {
+  const box = $("#ilha");
+  if (state.needToken) {
+    if (_ilhaKey !== "token") { _ilhaKey = "token"; ilhaPost({ drag: 0 });
+      box.innerHTML = `<input type="password" id="token" placeholder="Cole o token do Fila" autocomplete="off"><button class="go" data-act="save-token">Conectar</button>`; }
+    return;
+  }
+  if (!state.loaded) { if (_ilhaKey !== "load") { _ilhaKey = "load"; box.innerHTML = `<div class="t"><div class="b">${state.loadError ? "Sem conexão com o Fila…" : "Carregando…"}</div></div>`; } return; }
+  const a = player.audio, ep = player.ep, up = ep ? null : ilhaUpNext(), show = ep || up?.ep;
+  if (!show) { if (_ilhaKey !== "empty") { _ilhaKey = "empty"; box.innerHTML = `<div class="t"><div class="a">Fila vazia</div><div class="b">Nada para tocar agora</div></div>`; } return; }
+  const playing = ep && a && !a.paused;
+  const key = `${show.id}|${playing}|${!!ep}`;
+  if (key !== _ilhaKey) {
+    _ilhaKey = key;
+    box.innerHTML = `<img src="${esc(show.artwork || "")}" alt="">
+      <div class="t"><div class="a">${esc(show.title)}</div><div class="b" id="ilha-b"></div></div>
+      <div class="btns">
+        <button data-act="pl-back" title="Voltar 15s" ${ep ? "" : "disabled"}>−15</button>
+        <button class="main" data-act="${ep ? "pl-toggle" : "ilha-start"}" title="${playing ? "Pausar" : "Tocar"}">${playing ? PAUSE : I.play}</button>
+        <button data-act="pl-fwd" title="Avançar 30s" ${ep ? "" : "disabled"}>+30</button>
+        <button data-act="pl-next" title="Próximo">${'<svg class="i" viewBox="0 0 24 24"><path d="M6 5l9 7-9 7z" fill="currentColor" stroke="none"/><path d="M18 5v14"/></svg>'}</button>
+      </div><div class="bar"><i id="ilha-p"></i></div>`;
+    ilhaPost({ drag: 12 + 46 + 10 + Math.max(0, box.querySelector(".t").offsetWidth) });
+  }
+  const dur = (ep && a?.duration) || show.duration_sec || 0;
+  const cur = ep ? a.currentTime || 0 : (LS.get(`pos:${show.id}`, 0) || show.playhead_sec || 0);
+  const nxt = ep ? player.queue.length : up?.queue.length || 0;
+  $("#ilha-b").textContent = [show.show_title, dur ? `faltam ${fmtDur(Math.max(0, dur - cur))}` : "", !ep && !up?.resume ? "Seu dia" : "", nxt ? `+${nxt} na sequência` : ""].filter(Boolean).join(" · ");
+  $("#ilha-p").style.width = `${dur ? Math.min(100, (cur / dur) * 100) : 0}%`;
 }
 function dayPanel(d) {
   const t = LS.get("dayTarget", 90);
@@ -1142,7 +1218,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 14</div>
+    <div class="hint">Versão 2026-11-09 · 15</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1392,6 +1468,7 @@ function viewSettings() {
 function setSub(t) { $("#h-sub").textContent = t; }
 
 function render() {
+  if (ILHA) return renderIlha();
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === (state.tab === "archive" ? "queue" : state.tab)));
   const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
   $("#h-title").textContent = titles[state.tab];
@@ -1462,6 +1539,9 @@ async function act(el) {
     }
     if (a === "pl-toggle") { const au = player.audio; au.paused ? au.play() : au.pause(); return; }
     if (a === "pl-back") { player.audio.currentTime -= 15; return; }
+    if (a === "pl-fwd") { player.audio.currentTime += 30; return; }
+    if (a === "pl-next") return ilhaNext();
+    if (a === "ilha-start") return ilhaStart();
     if (a === "pl-close") { playerSave(); player.audio.pause(); player.ep = null; player.queue = []; return drawPlayer(); }
     if (a === "open-search") { state.prevTab = state.tab === "search" ? state.prevTab : state.tab; state.tab = "search"; render(); setTimeout(() => $("#q")?.focus(), 50); return; }
     if (a === "q-clear") { state.q = ""; render(); $("#q")?.focus(); return; }
@@ -1663,6 +1743,7 @@ if ("serviceWorker" in navigator) {
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - _lastLoad > 60000) load(); });
 render();
 load();
+if (ILHA) setInterval(() => { if (Date.now() - _lastLoad > 600000) load(); }, 60000);
 </script>
 </body>
 </html>
