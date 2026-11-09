@@ -1230,13 +1230,13 @@ function renderIlha(full) {
   const box = $("#ilha-pill");
   if (full && state.ilhaOpen) renderIlhaRows();
   if (state.needToken) {
-    if (_ilhaKey !== "token") { _ilhaKey = "token"; ilhaPost({ drag: 0 });
+    if (_ilhaKey !== "token") { _ilhaKey = "token"; ilhaPost({ drag: 0, np: null });
       box.innerHTML = `<input type="password" id="token" placeholder="Cole o token do Fila" autocomplete="off"><button class="go" data-act="save-token">Conectar</button>`; }
     return;
   }
   if (!state.loaded) { if (_ilhaKey !== "load") { _ilhaKey = "load"; box.innerHTML = `<div class="t"><div class="b">${state.loadError ? "Sem conexão com o Fila…" : "Carregando…"}</div></div>`; } return; }
   const a = player.audio, ep = player.ep, up = ep ? null : ilhaUpNext(), show = ep || up?.ep;
-  if (!show) { if (_ilhaKey !== "empty") { _ilhaKey = "empty"; box.innerHTML = `<div class="t"><div class="a">Fila vazia</div><div class="b">Nada para tocar agora</div></div>`; } return; }
+  if (!show) { if (_ilhaKey !== "empty") { _ilhaKey = "empty"; ilhaPost({ np: null }); box.innerHTML = `<div class="t"><div class="a">Fila vazia</div><div class="b">Nada para tocar agora</div></div>`; } return; }
   const playing = ep && a && !a.paused;
   if (!!playing !== !!state._ilhaPlaying) { state._ilhaPlaying = !!playing; ilhaPost({ playing: !!playing }); }
   const key = `${show.id}|${playing}|${!!ep}`;
@@ -1258,6 +1258,21 @@ function renderIlha(full) {
   const nxt = ep ? player.queue.length : up?.queue.length || 0;
   $("#ilha-b").textContent = [show.show_title, dur ? `faltam ${fmtDur(Math.max(0, dur - cur))}` : "", !ep && !up?.resume ? "Seu dia" : "", nxt ? `+${nxt} na sequência` : ""].filter(Boolean).join(" · ");
   $("#ilha-p").style.width = `${dur ? Math.min(100, (cur / dur) * 100) : 0}%`;
+  // mini player do menu da barra (app nativo): manda o que está tocando, no máx. 1×/s
+  const np = { id: show.id, title: show.title, show: show.show_title || "", art: show.artwork || "", cur: Math.floor(cur), dur: Math.floor(dur), playing: !!playing, live: !!ep, next: nxt };
+  const sig = JSON.stringify(np); if (sig !== state._ilhaNP) { state._ilhaNP = sig; ilhaPost({ np }); }
+}
+// comandos vindos do mini player da barra de menus
+function ilhaCmd(c, v) {
+  const au = player.audio;
+  if (c === "toggle") { if (player.ep && au) au.paused ? au.play() : au.pause(); else ilhaStart(); }
+  if (c === "back" && player.ep) au.currentTime -= 15;
+  if (c === "fwd" && player.ep) au.currentTime += 30;
+  if (c === "next") ilhaNext();
+  if (c === "seek") {
+    if (player.ep) au.currentTime = v;
+    else { const u = ilhaUpNext(); if (u) { LS.set(`pos:${u.ep.id}`, Math.floor(v)); _ilhaKey = ""; renderIlha(); } }
+  }
 }
 function dayPanel(d) {
   const t = LS.get("dayTarget", 90);
@@ -1281,7 +1296,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 18</div>
+    <div class="hint">Versão 2026-11-09 · 19</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
