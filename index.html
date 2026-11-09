@@ -1064,8 +1064,8 @@ function viewQueue() {
 const recentListening = (e) => e.status === "listening" && (!e.apple_played_at || Date.now() - new Date(e.apple_played_at) < 30 * DAY);
 const today = () => new Date().toISOString().slice(0, 10);
 function daySeed(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296); }
-function dayPlan(all) {
-  const target = (LS.get("dayTarget", 90)) * 60;
+function dayPlan(all, tMin) {
+  const target = (tMin ?? LS.get("dayTarget", 90)) * 60;
   const skip = new Set(LS.get(`daySkip:${today()}`, []));
   const rnd = daySeed(today() + skip.size);
   const pool = all.filter((e) => !skip.has(e.id) && validity(e).cls !== "old" && e.platform !== "youtube")
@@ -1315,7 +1315,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 20</div>
+    <div class="hint">Versão 2026-11-09 · 21</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1432,14 +1432,39 @@ function viewWatch() {
         <button class="mini" aria-label="Remover" data-act="move" data-op="remove" data-slug="${l.slug}" data-id="${e.id}">${I.x}</button>
       </div>`).join("") || `<div class="hint">Vazia. Na Fila, toque em “+ ${esc(name)}” nos episódios que quer levar.</div>`}
       </div>
-      <details><summary>Assinar no Apple Podcasts</summary>
+      ${l.slug === "natacao" ? natPanel(total) : `<details><summary>Assinar no Apple Podcasts</summary>
         <div class="feedurl">${esc(feed)}</div>
         <div class="row"><button class="btn" data-act="copy" data-text="${esc(feed)}">${I.copy}Copiar link</button>
         <a class="btn" href="${esc(feed.replace(/^https:/, "podcast:"))}">Abrir no Podcasts</a></div>
         <div class="hint">No Podcasts: Biblioteca → ••• → Seguir um programa por URL. Faça uma vez só e ligue “Baixar episódios” pra ir pro Watch.</div>
-      </details>
+      </details>`}
     </div>`;
   }).join("") + `</div>`;
+}
+
+// ---------- Natação (fone OpenSwim Pro, modo MP3) ----------
+// A lista "Natação" vai pro fone quando ele é plugado no Mac (o app Fila Ilha copia os MP3 em ordem).
+function natPanel(total) {
+  const opts = [[45, "45 min"], [60, "1h"], [90, "1h30"], [120, "2h"], [180, "3h"]];
+  return `<div class="fs-l" style="margin-top:10px">Encher com o Seu dia até</div>
+    <div class="wrap">${opts.map(([m, l]) => `<button class="chip small ${total >= m ? "" : ""}" data-act="nat-fill" data-min="${m}">${l}</button>`).join("")}
+      ${total ? `<button class="chip small" data-act="nat-clear">Limpar</button>` : ""}</div>
+    <div class="hint">Plugue o OpenSwim Pro no Mac (modo MP3) com o app Fila Ilha aberto: ele pergunta o que você ouviu na última natação, marca como ouvido e copia esta lista em ordem. Se a lista estiver vazia, enche sozinho com ${LS.get("natMin", 60)} min do Seu dia.</div>`;
+}
+async function natFill(min) {
+  LS.set("natMin", min);
+  const l = state.lists.find((x) => x.slug === "natacao"); if (!l) return 0;
+  const have = new Set((l.fila_list_items || []).map((i) => i.episode_id));
+  const byId = Object.fromEntries(state.episodes.map((e) => [e.id, e]));
+  const cur = [...have].reduce((s, id) => s + (byId[id] && byId[id].status !== "done" ? byId[id].duration_sec || 0 : 0), 0);
+  const left = min - Math.round(cur / 60);
+  if (left < 10) { toast("A lista já tem esse tempo"); return 0; }
+  const pool = state.episodes.filter((e) => (e.status === "queue" || e.status === "listening") && !have.has(e.id) && e.platform !== "youtube");
+  let n = 0;
+  for (const e of dayPlan(pool, left).eps) { try { await api(`/lists/natacao`, { episode_id: e.id, op: "add" }); n++; } catch (_) { /* sem áudio: pula */ } }
+  state.lists = await api("/lists"); render();
+  toast(n ? `${n} episódio${n > 1 ? "s" : ""} na Natação` : "Nada coube nesse tempo");
+  return n;
 }
 
 // ---------- Fila automática ----------
@@ -1641,6 +1666,8 @@ async function act(el) {
     if (a === "pl-next") return ilhaNext();
     if (a === "ilha-start") return ilhaStart();
     if (a === "ilha-pick") return ilhaPick(id, el.dataset.sec);
+    if (a === "nat-fill") { el.disabled = true; toast("Montando a Natação…"); return natFill(Number(el.dataset.min)); }
+    if (a === "nat-clear") { await api("/lists/natacao", { op: "clear" }); state.lists = await api("/lists"); return render(); }
     if (a === "pl-close") { playerSave(); player.audio.pause(); player.ep = null; player.queue = []; return drawPlayer(); }
     if (a === "open-search") { state.prevTab = state.tab === "search" ? state.prevTab : state.tab; state.tab = "search"; render(); setTimeout(() => $("#q")?.focus(), 50); return; }
     if (a === "q-clear") { state.q = ""; render(); $("#q")?.focus(); return; }
