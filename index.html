@@ -1115,7 +1115,28 @@ function playBtn(e) {
   return "";
 }
 const player = { audio: null, ep: null, queue: [] };
-function playerSave() { const a = player.audio; if (a && player.ep) LS.set(`pos:${player.ep.id}`, Math.floor(a.currentTime)); }
+function playerSave() { const a = player.audio; if (a && player.ep) { LS.set(`pos:${player.ep.id}`, Math.floor(a.currentTime)); LS.set(`posAt:${player.ep.id}`, Date.now()); } }
+// manda pro servidor onde você parou (vira "ouvindo" em todo lugar) e, faltando < 1 min, marca como ouvido.
+// Roda ao pausar, a cada minuto tocando, ao trocar de episódio e ao fechar.
+let _lastSync = 0;
+function progressSync(final) {
+  const a = player.audio, ep = player.ep;
+  if (!ep || !a || !a.duration || !isFinite(a.duration)) return;
+  const cur = Math.floor(a.currentTime), dur = a.duration;
+  if (cur < 30 && !final) return;
+  if (dur - cur < 60) { if (!ep._doneSent) { ep._doneSent = true; markDone(ep); } return; }
+  if (!final && Date.now() - _lastSync < 60000) return;
+  if (ep._synced === cur) return;
+  _lastSync = Date.now(); ep._synced = cur;
+  patchLocal(ep.id, { status: ep.status === "done" ? "done" : "listening", playhead_sec: cur, apple_played_at: new Date().toISOString() });
+  fetch(API + `/episodes/${ep.id}`, { method: "POST", keepalive: true, headers: { "x-fila-token": LS.get("token", ""), "content-type": "application/json" }, body: JSON.stringify({ progress: true, playhead_sec: cur }) }).catch(() => {});
+}
+async function markDone(ep) {
+  patchLocal(ep.id, { status: "done", done_at: new Date().toISOString(), playhead_sec: null });
+  LS.set(`pos:${ep.id}`, 0);
+  try { await api(`/episodes/${ep.id}`, { status: "done" }); } catch (_) {}
+}
+window.addEventListener("pagehide", () => { playerSave(); progressSync(true); });
 async function playHere(ep, queue = []) {
   if (!ep.audio_url) {
     // episódio vindo do Notion: o servidor descobre o áudio (via lista Hoje) e devolve; se não estava na lista, sai de novo
@@ -1124,17 +1145,19 @@ async function playHere(ep, queue = []) {
     if (r?.episode?.audio_url) { ep.audio_url = r.episode.audio_url; if (!was) await api(`/lists/hoje`, { episode_id: ep.id, op: "remove" }).catch(() => {}); }
   }
   if (!ep.audio_url) return toast("Esse episódio não tem áudio direto. Abra no Podcasts.");
-  playerSave();
+  playerSave(); progressSync(true);
   if (!player.audio) {
     player.audio = new Audio(); player.audio.preload = "auto";
-    player.audio.addEventListener("timeupdate", () => { drawPlayer(); if (Math.floor(player.audio.currentTime) % 10 === 0) playerSave(); });
-    player.audio.addEventListener("play", drawPlayer); player.audio.addEventListener("pause", () => { playerSave(); drawPlayer(); });
-    player.audio.addEventListener("ended", () => { LS.set(`pos:${player.ep.id}`, 0); if (ILHA) ilhaDone(player.ep); const next = player.queue.shift(); if (next) playHere(next, player.queue); else drawPlayer(); });
+    player.audio.addEventListener("timeupdate", () => { drawPlayer(); if (Math.floor(player.audio.currentTime) % 10 === 0) playerSave(); progressSync(); });
+    player.audio.addEventListener("play", drawPlayer); player.audio.addEventListener("pause", () => { playerSave(); progressSync(true); drawPlayer(); });
+    player.audio.addEventListener("ended", () => { LS.set(`pos:${player.ep.id}`, 0); if (!player.ep._doneSent) { player.ep._doneSent = true; markDone(player.ep); } const next = player.queue.shift(); if (next) playHere(next, player.queue); else drawPlayer(); });
   }
   player.ep = ep; player.queue = queue;
   if (ILHA) LS.set("ilhaLast", { id: ep.id, q: queue.map((x) => x.id) });
   player.audio.src = ep.audio_url;
-  const pos = LS.get(`pos:${ep.id}`, 0) || ep.playhead_sec || 0;
+  // retoma do ponto mais recente: o deste aparelho ou o do servidor (outro aparelho / Apple)
+  const lp = LS.get(`pos:${ep.id}`, 0), lAt = LS.get(`posAt:${ep.id}`, 0), sAt = ep.apple_played_at ? +new Date(ep.apple_played_at) : 0;
+  const pos = (lp && lAt >= sAt ? lp : ep.playhead_sec || lp) || 0;
   player.audio.addEventListener("loadedmetadata", () => { if (pos > 5) player.audio.currentTime = pos; }, { once: true });
   player.audio.play().catch(() => {});
   if ("mediaSession" in navigator) {
@@ -1173,10 +1196,6 @@ function ilhaNext() {
   const skip = (state.ilhaSkip ||= new Set()); if (player.ep) skip.add(player.ep.id);
   const d = dayPlan(ilhaPool().filter((e) => !skip.has(e.id))).eps;
   if (d.length) playHere(d[0], d.slice(1)); else toast("Fim do Seu dia");
-}
-async function ilhaDone(ep) {
-  patchLocal(ep.id, { status: "done", done_at: new Date().toISOString() });
-  try { await api(`/episodes/${ep.id}`, { status: "done" }); } catch (_) {}
 }
 // lista para escolher: abre ao clicar no título (o app nativo chama ilhaToggle)
 const ILHA_H = 68, ILHA_OPEN_H = 440;
@@ -1296,7 +1315,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 19</div>
+    <div class="hint">Versão 2026-11-09 · 20</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
