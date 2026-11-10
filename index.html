@@ -695,7 +695,7 @@ function cardInner(e, mode) {
 
 // quanto já ouviu (vem do Apple Podcasts pelo Mac)
 function progress(e) {
-  if (!e.playhead_sec || !e.duration_sec) return "";
+  if (e.status === "done" || !e.playhead_sec || !e.duration_sec) return ""; // ouvido: não mostra "faltam"
   const p = Math.min(99, Math.round((e.playhead_sec / e.duration_sec) * 100));
   return `${p}% · faltam ${fmtDur(e.duration_sec - e.playhead_sec)}`;
 }
@@ -1384,7 +1384,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-10 · 33</div>
+    <div class="hint">Versão 2026-11-10 · 34</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
