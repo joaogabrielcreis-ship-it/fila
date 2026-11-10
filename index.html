@@ -83,6 +83,7 @@ main{padding:6px 16px calc(120px + env(safe-area-inset-bottom));max-width:980px;
 .grid{display:grid;grid-template-columns:1fr;gap:12px}
 @media (min-width:720px){.grid{grid-template-columns:1fr 1fr}}
 .section-title{font-size:20px;font-weight:700;margin:22px 4px 10px}
+.section-title svg{width:18px;height:18px;vertical-align:-2px;margin-right:6px;color:var(--accent,#f60)}
 
 /* ---------- Floating tab bar ---------- */
 .tabbar{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:max(14px, calc(env(safe-area-inset-bottom) - 6px));
@@ -1097,11 +1098,15 @@ function viewQueue() {
   const day = showDay ? dayPlan(all) : null;
   const dayIds = new Set(day ? day.eps.map((e) => e.id) : []);
   // Salvos agora: o que você salvou (Apple, Notion, +) nos últimos 3 dias, mais novo primeiro. Senão some no meio da Fila.
-  const fresh = showDay ? items.filter((e) => e.source !== "rss" && !dayIds.has(e.id) && Date.now() - new Date(e.saved_at) < 3 * DAY)
+  const openSet = new Set(openedList().map((o) => o.id));
+  const fresh = showDay ? items.filter((e) => e.source !== "rss" && !dayIds.has(e.id) && !openSet.has(e.id) && Date.now() - new Date(e.saved_at) < 3 * DAY)
     .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at)).slice(0, 5) : [];
-  const freshIds = new Set(fresh.map((e) => e.id));
+  const opened = openedList().map((o) => state.episodes.find((e) => e.id === o.id));
+  const openIds = new Set(opened.map((e) => e.id));
+  const freshIds = new Set([...fresh.map((e) => e.id), ...openIds]);
   const rest = items.filter((e) => !dayIds.has(e.id) && !freshIds.has(e.id));
-  return (day ? dayPanel(day) : "")
+  return (opened.length ? `<div class="section-title">${I.play}Tocando no Podcasts</div><div class="grid opened">${opened.map((e) => card(e, "queue")).join("")}</div>` : "")
+    + (day ? dayPanel(day) : "")
     + (fresh.length ? `<div class="section-title">Salvos agora</div><div class="grid">${fresh.map((e) => card(e, "queue")).join("")}</div>` : "")
     + (day || fresh.length ? `<div class="section-title">Resto da fila</div>` : "")
     + `<div class="grid">${rest.slice(0, state.limit || 60).map((e) => card(e, "queue")).join("")}</div>`
@@ -1153,6 +1158,17 @@ function dayPlan(all, tMin) {
 }
 // ---------- Tocar: abre o episódio no Podcasts/YouTube (mantém o andamento sincronizado com a Apple);
 // sem link do episódio, toca aqui mesmo no player do app.
+// Abertos no Podcasts: o que você escolheu ouvir no app da Apple fica no topo da Fila até marcar "Ouvi" (ou 3 dias)
+function openedList() {
+  const ok = (o) => { const e = state.episodes.find((x) => x.id === o.id); return e && e.status !== "done" && Date.now() - o.at < 3 * DAY; };
+  return LS.get("openedApple", []).filter(ok);
+}
+function markOpened(id) {
+  if (!id) return;
+  const l = [{ id, at: Date.now() }, ...LS.get("openedApple", []).filter((o) => o.id !== id)].slice(0, 5);
+  LS.set("openedApple", l);
+}
+function unOpened(id) { LS.set("openedApple", LS.get("openedApple", []).filter((o) => o.id !== id)); }
 function epLink(e) {
   const u = e.url || e.apple_url || "";
   if (e.platform === "youtube" || /youtu\.?be/.test(u)) return u;
@@ -1384,7 +1400,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-10 · 34</div>
+    <div class="hint">Versão 2026-11-10 · 35</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1952,6 +1968,8 @@ async function act(el) {
   } catch (e) { toast(e.message); load(); }
 }
 document.addEventListener("click", (ev) => {
+  const ap = ev.target.closest('a[href*="podcasts.apple.com"],a[href*="youtu"]');
+  if (ap) { const id = ap.closest("[data-ep]")?.dataset.ep || (ap.closest("#esheet") ? state.ep : null); if (id) { markOpened(id); setTimeout(render, 300); } return; }
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
   const jb = ev.target.closest("[data-jump]");
