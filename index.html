@@ -902,7 +902,11 @@ const foldS = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u
 function searchHay(e) { return e._hay ??= foldS([e.title, e.show_title, e.author, (e.guests || []).join(" "), (e.shelves || []).join(" "), e.theme, e.story_label].join(" ")); }
 function viewSearch() {
   const q = state.q || "";
-  $("#filterbar").innerHTML = `<div class="toolbar"><div class="search-box glass"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="q" type="search" placeholder="Episódio, programa, convidado, assunto…" value="${esc(q)}" autocomplete="off" enterkeyhint="search">${q ? `<button class="mini" data-act="q-clear" aria-label="Limpar">${I.x}</button>` : ""}</div></div>`;
+  // Não recria o campo se ele já existe: recriar no meio da digitação apagava letras (voltava pro texto de 250 ms atrás)
+  const qx = q ? `<button class="mini" data-act="q-clear" aria-label="Limpar">${I.x}</button>` : "";
+  const qi = $("#filterbar #q");
+  if (qi) { if (qi.value !== q && document.activeElement !== qi) qi.value = q; $("#q-x").innerHTML = qx; }
+  else $("#filterbar").innerHTML = `<div class="toolbar"><div class="search-box glass"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="q" type="search" placeholder="Episódio, programa, convidado, assunto…" value="${esc(q)}" autocomplete="off" enterkeyhint="search"><span id="q-x">${qx}</span></div></div>`;
   if (!state.archive) loadArchive();
   const terms = foldS(q).split(/\s+/).filter(Boolean);
   if (!terms.length) { setSub("Busca em todo o histórico"); return `<div class="hint" style="margin:6px 4px">Busca em todo o histórico: título, programa, convidado (ex.: “Altman”), Shelf, assunto e descrição do episódio. Entende erro de digitação e sinônimos (IA = AI, EUA = USA, juros = Fed…).</div>`; }
@@ -1092,8 +1096,14 @@ function viewQueue() {
   const showDay = state.f.sort === "smart" && !activeFilters().length && all.length > 4;
   const day = showDay ? dayPlan(all) : null;
   const dayIds = new Set(day ? day.eps.map((e) => e.id) : []);
-  const rest = items.filter((e) => !dayIds.has(e.id));
-  return (day ? dayPanel(day) + `<div class="section-title">Resto da fila</div>` : "")
+  // Salvos agora: o que você salvou (Apple, Notion, +) nos últimos 3 dias, mais novo primeiro. Senão some no meio da Fila.
+  const fresh = showDay ? items.filter((e) => e.source !== "rss" && !dayIds.has(e.id) && Date.now() - new Date(e.saved_at) < 3 * DAY)
+    .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at)).slice(0, 5) : [];
+  const freshIds = new Set(fresh.map((e) => e.id));
+  const rest = items.filter((e) => !dayIds.has(e.id) && !freshIds.has(e.id));
+  return (day ? dayPanel(day) : "")
+    + (fresh.length ? `<div class="section-title">Salvos agora</div><div class="grid">${fresh.map((e) => card(e, "queue")).join("")}</div>` : "")
+    + (day || fresh.length ? `<div class="section-title">Resto da fila</div>` : "")
     + `<div class="grid">${rest.slice(0, state.limit || 60).map((e) => card(e, "queue")).join("")}</div>`
     + (items.length > (state.limit || 60) ? `<div class="row" style="justify-content:center"><button class="btn" data-act="more">Mostrar mais (${items.length - (state.limit || 60)} restantes)</button></div>` : "")
     + archiveLink;
@@ -1374,7 +1384,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-09 · 30</div>
+    <div class="hint">Versão 2026-11-10 · 31</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1752,7 +1762,12 @@ $("#sheet-paste").onclick = async () => { try { $("#add-url").value = await navi
 $("#sheet-send").onclick = async () => {
   const u = $("#add-url").value.trim(); if (!u) return;
   openSheet(false); toast("Buscando episódio…");
-  try { const r = await api("/add", { url: u }); toast(r.message); $("#add-url").value = ""; state.tab = "queue"; LS.set("tab", "queue"); load(); }
+  try {
+    const r = await api("/add", { url: u }); toast(r.message); $("#add-url").value = ""; state.tab = "queue"; LS.set("tab", "queue");
+    await load();
+    // abre o episódio na hora: dá pra ver que entrou (ou onde já estava)
+    if (r.episode?.id) { if (!state.episodes.some((e) => e.id === r.episode.id)) state.episodes.push(r.episode); _prio.clear?.(); render(); openEp(r.episode.id); }
+  }
   catch (e) { toast(e.message); }
 };
 
@@ -1800,7 +1815,7 @@ async function act(el) {
     if (a === "nat-clear") { await api("/lists/natacao", { op: "clear" }); state.lists = await api("/lists"); return render(); }
     if (a === "pl-close") { playerSave(); player.audio.pause(); player.ep = null; player.queue = []; return drawPlayer(); }
     if (a === "open-search") { state.prevTab = state.tab === "search" ? state.prevTab : state.tab; state.tab = "search"; render(); setTimeout(() => $("#q")?.focus(), 50); return; }
-    if (a === "q-clear") { state.q = ""; render(); $("#q")?.focus(); return; }
+    if (a === "q-clear") { state.q = ""; const i = $("#q"); if (i) i.value = ""; render(); $("#q")?.focus(); return; }
     if (a === "q-more") { state.qMore = { ...(state.qMore || {}), [el.dataset.mode]: true }; return render(); }
     if (a === "reload") { state.loadError = null; render(); return load(); }
     if (a === "al-toggle") {
