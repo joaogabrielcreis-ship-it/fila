@@ -627,7 +627,7 @@ function cardInner(e, mode) {
     ?`<a class="btn small" href="${esc(e.url || e.apple_url)}" target="_blank">${I.play}${isYT ? "Assistir no YouTube" : "Abrir"}</a>`
     : state.lists.map((l) => {
     const on = inList(l.slug, e.id);
-    return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace("Fila · ", ""))}</button>`;
+    return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace(/^.*?Fila · /, ""))}</button>`;
   }).join("");
   const actions = {
     inbox: `<div class="scroll"><button class="btn quiet" data-act="dismiss" data-id="${e.id}">${I.x}Descartar</button></div>
@@ -706,7 +706,7 @@ const SWIPE = {
   inbox: { right: ["keep", () => "Manter"], left: ["dismiss", () => "Descartar"] },
   archive: { right: ["restore", () => "Restaurar"], left: null },
 };
-function listName(slug) { return (state.lists.find((l) => l.slug === slug)?.title || slug || "Hoje").replace("Fila · ", ""); }
+function listName(slug) { return (state.lists.find((l) => l.slug === slug)?.title || slug || "Hoje").replace(/^.*?Fila · /, ""); }
 // etiqueta clicável → Fila filtrada por ela
 const jp = (k, v, label, cls = "pill") => v ? `<button class="${cls} jump" data-jump="${k}" data-v="${esc(v)}" title="Ver a Fila filtrada">${label}</button>` : "";
 const topicOf = (e) => state._queueClusters?.map.get(e.id)?.label || "";
@@ -1384,7 +1384,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-10 · 32</div>
+    <div class="hint">Versão 2026-11-10 · 33</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1490,7 +1490,7 @@ function viewWatch() {
     const items = (l.fila_list_items || []).sort((a, b) => a.position - b.position).map((i) => byId[i.episode_id]).filter((e) => e && e.status !== "done");
     const total = items.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
     const feed = `${API}/feed/${l.slug}.xml?t=${LS.get("token", "")}`;
-    const name = l.title.replace("Fila · ", "");
+    const name = l.title.replace(/^.*?Fila · /, "");
     return `<div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
         <h3>${esc(name)}</h3><span class="sub">${items.length} · ${total ? fmtDur(total * 60) : "vazia"}</span>
@@ -1695,7 +1695,7 @@ function epSheet(e) {
   const mode = epMode(e), v = validity(e), isYT = e.platform === "youtube" || /youtu\.?be/.test(e.url || "");
   const link = isYT ? (e.url || e.apple_url) : appleLink(e);
   const lists = !isYT && (e.audio_url || e.platform === "apple") && mode !== "done"
-    ? state.lists.map((l) => { const on = inList(l.slug, e.id); return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace("Fila · ", ""))}</button>`; }).join("") : "";
+    ? state.lists.map((l) => { const on = inList(l.slug, e.id); return `<button class="btn small ${on ? "on" : ""}" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}${esc(l.title.replace(/^.*?Fila · /, ""))}</button>`; }).join("") : "";
   const main = {
     queue: `<button class="btn primary" data-act="done" data-id="${e.id}">${I.check}Ouvi</button>`,
     inbox: `<button class="btn quiet" data-act="dismiss" data-id="${e.id}">${I.x}Descartar</button><button class="btn primary" data-act="keep" data-id="${e.id}">${I.check}Manter</button>`,
@@ -1924,7 +1924,7 @@ async function act(el) {
       const r = await api(`/lists/${slug}`, { episode_id: id, op });
       if (r.episode) patchLocal(id, { audio_url: r.episode.audio_url, artwork: r.episode.artwork });
       const l = state.lists.find((x) => x.slug === slug); l.fila_list_items = r.order.map((episode_id, position) => ({ episode_id, position }));
-      render(); if (a === "list") toast(op === "add" ? `+ ${l.title.replace("Fila · ", "")}` : "Removido da lista"); return;
+      render(); if (a === "list") toast(op === "add" ? `+ ${l.title.replace(/^.*?Fila · /, "")}` : "Removido da lista"); return;
     }
     if (a === "kind") { await api(`/episodes/${id}`, { kind: el.dataset.kind }); return load(); }
     if (a === "copy") { await navigator.clipboard.writeText(el.dataset.text); return toast("Link copiado"); }
