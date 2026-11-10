@@ -937,7 +937,7 @@ async function searchServer(q) {
   const seq = ++_qSeq;
   state.srv = { q, results: null, err: null };
   try {
-    const r = await api("/search?q=" + encodeURIComponent(q));
+    const r = await api("/search?lim=300&q=" + encodeURIComponent(q));
     if (seq !== _qSeq) return;
     state.srv = { q, results: r.results || [] };
   } catch (err) { if (seq !== _qSeq) return; state.srv = { q, results: null, err: String(err) }; }
@@ -1384,7 +1384,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-10 · 31</div>
+    <div class="hint">Versão 2026-11-10 · 32</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
