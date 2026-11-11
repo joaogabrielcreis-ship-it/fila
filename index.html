@@ -554,7 +554,8 @@ function applyFilters(list, opt = {}) {
   });
   const by = {
     smart: (a, b) => prio(b).score - prio(a).score,
-    pub_desc: (a, b) => new Date(b.pub_date) - new Date(a.pub_date),
+    saved_desc: (a, b) => new Date(b.saved_at || 0) - new Date(a.saved_at || 0),
+    pub_desc: (a, b) => new Date(b.pub_date || 0) - new Date(a.pub_date || 0),
     pub_asc: (a, b) => new Date(a.pub_date) - new Date(b.pub_date),
     dur_asc: (a, b) => (a.duration_sec ?? 0) - (b.duration_sec ?? 0),
     dur_desc: (a, b) => (b.duration_sec ?? 0) - (a.duration_sec ?? 0),
@@ -564,7 +565,7 @@ function applyFilters(list, opt = {}) {
 }
 
 // Barra única: ordem · filtros (folha) · visão · densidade. Filtros ativos aparecem como pílulas removíveis.
-const SORTS = [["smart", "Recomendado"], ["pub_desc", "Mais novos"], ["pub_asc", "Mais antigos"], ["expiring", "Vencendo antes"], ["dur_asc", "Mais curtos"], ["dur_desc", "Mais longos"]];
+const SORTS = [["smart", "Recomendado"], ["saved_desc", "Salvos por último"], ["pub_desc", "Publicados por último"], ["pub_asc", "Publicados primeiro"], ["expiring", "Vencendo antes"], ["dur_asc", "Mais curtos"], ["dur_desc", "Mais longos"]];
 function activeFilters() {
   const f = state.f, out = [];
   if (f.theme) out.push(["theme", f.theme]);
@@ -1402,7 +1403,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-11 · 36</div>
+    <div class="hint">Versão 2026-11-11 · 37</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1772,6 +1773,38 @@ async function openEp(id) {
 }
 function closeEp() { state.ep = null; const el = $("#esheet"); el.classList.remove("show"); el.dataset.id = ""; if (!$("#fsheet").classList.contains("show") && !$("#sheet").classList.contains("show")) $("#scrim").classList.remove("show"); }
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && state.ep) closeEp(); });
+// Arrastar pra baixo fecha qualquer folha (episódio, filtros, mandar episódio).
+// Começa pelo topo da folha, ou em qualquer lugar quando a rolagem de dentro já está no início.
+(() => {
+  const closeOf = { esheet: () => closeEp(), fsheet: () => closeFilters(), sheet: () => openSheet(false) };
+  let d = null;
+  document.addEventListener("touchstart", (ev) => {
+    const sh = ev.target.closest(".sheet.show"); if (!sh || ev.touches.length !== 1) return;
+    if (ev.target.closest("input,textarea,select")) return;
+    const sc = ev.target.closest(".es-body,.fs-scroll");
+    d = { sh, sc, y0: ev.touches[0].clientY, x0: ev.touches[0].clientX, t0: Date.now(), dy: 0, on: false };
+  }, { passive: true });
+  document.addEventListener("touchmove", (ev) => {
+    if (!d) return;
+    const dy = ev.touches[0].clientY - d.y0, dx = ev.touches[0].clientX - d.x0;
+    if (!d.on) {
+      if (Math.abs(dy) < 8) return;
+      if (dy < 0 || Math.abs(dx) > Math.abs(dy) || (d.sc && d.sc.scrollTop > 0)) { d = null; return; }
+      d.on = true; d.sh.style.transition = "none";
+    }
+    d.dy = Math.max(0, dy);
+    d.sh.style.transform = `translate(-50%, ${d.dy}px)`;
+    if (ev.cancelable) ev.preventDefault();
+  }, { passive: false });
+  const end = () => {
+    if (!d) return; const x = d; d = null; if (!x.on) return;
+    const fast = x.dy / Math.max(1, Date.now() - x.t0) > 0.6;
+    x.sh.style.transition = "";
+    if (x.dy > Math.min(140, x.sh.offsetHeight * 0.25) || (fast && x.dy > 40)) closeOf[x.sh.id]?.();
+    x.sh.style.transform = "";
+  };
+  document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
+})();
 function openSheet(show) {
   if (!show) closeFilters();
   $("#sheet").classList.toggle("show", show); $("#scrim").classList.toggle("show", show);
