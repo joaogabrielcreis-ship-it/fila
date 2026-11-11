@@ -276,6 +276,8 @@ details summary::-webkit-details-marker{display:none}
 
 /* ---------- Stats ---------- */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stats.four{grid-template-columns:repeat(4,1fr)}
+@media (max-width:520px){.stats.four{grid-template-columns:repeat(2,1fr)}}
 .stat{padding:14px;border-radius:20px}
 .stat .k{font-size:13px;color:var(--muted);font-weight:600}
 .stat .v{font-size:28px;font-weight:700;letter-spacing:-.01em;margin-top:4px;font-variant-numeric:tabular-nums}
@@ -1400,20 +1402,21 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-10 · 35</div>
+    <div class="hint">Versão 2026-11-11 · 36</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
 }
 
 // ---------- Ouvidos: período escolhido vale pra temas, programas e lista ----------
-const RANGES = [["week", "Esta semana"], ["lastweek", "Última semana"], ["7d", "7 dias"], ["month", "Este mês"], ["lastmonth", "Último mês"], ["30d", "30 dias"], ["12m", "12 meses"], ["lastyear", "Último ano"], ["all", "Tudo"]];
+const RANGES = [["today", "Hoje"], ["week", "Esta semana"], ["lastweek", "Última semana"], ["7d", "7 dias"], ["month", "Este mês"], ["lastmonth", "Último mês"], ["30d", "30 dias"], ["12m", "12 meses"], ["lastyear", "Último ano"], ["all", "Tudo"]];
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 function rangeBounds(k) {
   const now = new Date(), y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
   const mon = new Date(y, m, d - ((now.getDay() + 6) % 7)), ago = (n) => new Date(now - n * 864e5);
   const dm = (x) => `${String(x.getDate()).padStart(2, "0")}/${String(x.getMonth() + 1).padStart(2, "0")}`;
   const r = {
+    today: [new Date(y, m, d), null, "hoje"],
     week: [mon, null, `desde segunda, ${dm(mon)}`],
     lastweek: [new Date(y, m, mon.getDate() - 7), mon, `${dm(new Date(y, m, mon.getDate() - 7))} a ${dm(new Date(y, m, mon.getDate() - 1))}`],
     "7d": [ago(7), null, "últimos 7 dias"],
@@ -1470,7 +1473,10 @@ function viewDone() {
       `<div class="bar"><span>${esc(r[key] || "Outros")}</span><span class="n">${fmtDur(r.min * 60)}${r.n ? ` · ${r.n} ep` : ""}</span><div class="track"><div class="fill" style="width:${Math.max(4, (r.min / max) * 100)}%"></div></div></div>`).join("")}</div>
       ${rows.length > lim ? `<div class="row" style="justify-content:center;margin-top:6px"><button class="btn small" data-act="rng-more" data-k="${mk}">${open ? "Ver menos" : `Ver todos (${rows.length})`}</button></div>` : ""}</div>`;
   };
-  let html = `<div class="stats">
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const minToday = Math.round(state.episodes.filter((e) => e.status === "done" && e.done_at && new Date(e.done_at) >= t0).reduce((s, e) => s + (e.duration_sec || 0) / 60, 0));
+  let html = `<div class="stats four">
+    <div class="stat glass"><div class="k">Hoje</div><div class="v">${fmtHours(minToday)}</div></div>
     <div class="stat glass"><div class="k">7 dias</div><div class="v">${fmtHours(st.min_7 || 0)}</div></div>
     <div class="stat glass"><div class="k">30 dias</div><div class="v">${fmtHours(st.min_30 || 0)}</div></div>
     <div class="stat glass"><div class="k">12 meses</div><div class="v">${fmtHours(st.min_365 || 0)}</div></div>
