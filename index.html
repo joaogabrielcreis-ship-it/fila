@@ -276,6 +276,26 @@ details summary::-webkit-details-marker{display:none}
 
 /* ---------- Stats ---------- */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.inten{height:4px;border-radius:2px;background:var(--fill);overflow:hidden;flex:none}
+.inten i{display:block;height:100%;border-radius:2px;background:var(--accent)}
+.card.dense{position:relative}
+.card.dense .inten{position:absolute;left:74px;right:16px;bottom:5px;height:3px}
+.es-int{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:13px;color:var(--muted);font-weight:600}
+.es-int .inten{flex:1;max-width:160px}
+#asheet{padding:10px 10px 12px;max-height:80vh;overflow-y:auto}
+.as-h{padding:6px 10px 10px;border-bottom:.5px solid var(--line);margin-bottom:6px}
+.as-h .a{font-weight:700;font-size:15px;line-height:1.25}
+.as-h .b{font-size:13px;color:var(--muted);margin-top:2px}
+.act-i{display:flex;align-items:center;gap:12px;width:100%;padding:12px 10px;border:0;background:none;color:var(--ink);font:inherit;font-size:16px;text-align:left;border-radius:12px;text-decoration:none;cursor:pointer}
+.act-i:active{background:var(--fill)}
+.act-i .i{width:20px;height:20px;color:var(--accent);flex:none}
+.act-i.warn,.act-i.warn .i{color:var(--muted)}
+.as-sep{height:.5px;background:var(--line);margin:4px 10px}
+.pick-wrap{max-width:560px;margin:4px auto 0}
+.pick-wrap .sw{margin-bottom:14px}
+.pick-go{display:flex;justify-content:center;gap:10px;margin:6px 0 10px}
+.pick-go .btn{font-size:17px;padding:14px 22px}
 .stats.four{grid-template-columns:repeat(4,1fr)}
 @media (max-width:520px){.stats.four{grid-template-columns:repeat(2,1fr)}}
 .stat{padding:14px;border-radius:20px}
@@ -378,7 +398,7 @@ html.ilha #ilha{display:flex;flex-direction:column;height:100vh;user-select:none
 <nav class="tabbar glass" id="tabs">
   <button data-tab="inbox"><svg class="i" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></svg>Inbox<span id="cnt-inbox"></span></button>
   <button data-tab="queue"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/><path d="M17 15.5v5l4-2.5z" fill="currentColor"/></svg>Fila</button>
-  <button data-tab="watch"><svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3h4.6l.7 3M9 18l.7 3h4.6l.7-3M12 9.5V12l1.5 1.5"/></svg>Watch</button>
+  <button data-tab="pick"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>Sortear</button>
   <button data-tab="done"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg>Ouvidos</button>
   <button data-tab="settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.3"/><circle cx="8" cy="17" r="2.3"/></svg>Ajustes</button>
 </nav>
@@ -392,6 +412,7 @@ html.ilha #ilha{display:flex;flex-direction:column;height:100vh;user-select:none
 </div>
 <div class="sheet glass" id="fsheet"></div>
 <div class="sheet glass" id="esheet" role="dialog" aria-modal="true"></div>
+<div class="sheet glass" id="asheet" role="menu"></div>
 <div class="toast glass" id="toast"></div>
 <div id="ilha"><div id="ilha-pill"></div><div id="ilha-list" hidden></div></div>
 
@@ -414,6 +435,7 @@ const state = {
   f: Object.assign({ theme: "", dur: "", show: "", age: "", sort: "smart", lang: "", shelf: "", topic: "", platform: "", guest: "" }, LS.get("filters", {})),
   group: LS.get("group", "list"),
   dense: LS.get("dense", false),
+  pickId: LS.get("pickId", null), pickDur: LS.get("pickDur", ""),
   needToken: false,
   open: {}, loaded: false,
   swipeList: LS.get("swipeList", "hoje"),
@@ -452,6 +474,7 @@ const I = {
   star: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/></svg>',
   back: '<svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
   chev: '<svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
+  shuffle: '<svg class="i" viewBox="0 0 24 24"><path d="M3 7h3.5c2 0 3.2 1 4.3 2.7l2.4 4.6c1.1 1.7 2.3 2.7 4.3 2.7H21M3 17h3.5c1.6 0 2.7-.7 3.6-1.8M14 8.8c.9-1.1 2-1.8 3.5-1.8H21M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>',
 };
 
 async function api(path, body) {
@@ -657,6 +680,7 @@ function cardInner(e, mode) {
         <div class="meta"><span class="show-s">${esc(e.show_title || "")}</span><span>· ${fmtDur(e.duration_sec)}</span>${progress(e) ? `<span class="prog">${progress(e)}</span>` : ""}${mode === "queue" && v.cls !== "ever" ? `<span class="dot-v ${v.cls}" title="${v.label}"></span>` : ""}${isYT ? `<span class="pill yt mini-p">YT</span>` : ""}</div>
       </div>
       ${quick ? `<button class="round small ${mode === "queue" ? "accent" : "glass"}" data-act="${quick[0]}" data-id="${e.id}" aria-label="${quick[2]}">${quick[1]}</button>` : ""}
+      ${intenBar(e)}
     </div>`;
   }
   return `<div class="card" data-ep="${e.id}">
@@ -678,6 +702,7 @@ function cardInner(e, mode) {
         </div>
       </div>
     </div>
+    ${intenBar(e)}
     ${open ? `<div class="more">
         <div class="desc">${e.description === undefined ? "Carregando…" : esc((e.description || "Sem descrição.").slice(0, 900))}</div>
         <div class="wrap">
@@ -1010,6 +1035,52 @@ function affinity() {
   const th = Object.fromEntries((st.themes_365 || []).map((t) => [t.theme, t.min]));
   const sh = Object.fromEntries((st.shows_365 || []).map((s) => [s.show, s.min]));
   return { th, sh, thMax: Math.max(1, ...Object.values(th)), shMax: Math.max(1, ...Object.values(sh)) };
+}
+// Intensidade: quanto este episódio é a sua cara agora. Junta tema e programa que você mais ouve (12 meses),
+// estantes do seu histórico recente, o que está em alta na Fila (últimos 7 dias), assunto repetido e validade.
+const _int = new Map(); let _intKey = "";
+function intensity(e) {
+  const key = state.episodes.length + ":" + (state.stats?.count || 0) + ":" + (state._queueClusters?.groups?.length || 0);
+  if (key !== _intKey) { _int.clear(); _intKey = key; }
+  if (_int.has(e.id)) return _int.get(e.id);
+  const open = state.episodes.filter((x) => ["inbox", "queue", "listening"].includes(x.status));
+  const shelfMin = {};
+  state.episodes.filter((x) => x.status === "done").forEach((x) => (x.shelves || []).forEach((k) => (shelfMin[k] = (shelfMin[k] || 0) + (x.duration_sec || 1800))));
+  const slMax = Math.max(1, ...Object.values(shelfMin));
+  const af = affinity();
+  const trend = {};
+  open.filter((x) => Date.now() - new Date(x.pub_date || x.saved_at) < 7 * DAY).forEach((x) => [x.theme, ...(x.shelves || [])].forEach((k) => k && (trend[k] = (trend[k] || 0) + 1)));
+  const trMax = Math.max(1, ...Object.values(trend));
+  const raw = (x) => {
+    const ta = (af.th[x.theme] || 0) / af.thMax, sa = (af.sh[x.show_title] || 0) / af.shMax;
+    const sl = (x.shelves || []).map((k) => (shelfMin[k] || 0) / slMax).sort((a, b) => b - a).slice(0, 3);
+    const slA = sl.reduce((a, b) => a + b, 0) / 3;
+    const tr = Math.max(0, ...[x.theme, ...(x.shelves || [])].map((k) => (trend[k] || 0) / trMax));
+    const g = state._queueClusters?.map.get(x.id), topic = g ? Math.min(1, (g.eps.length - 1) / 4) : 0;
+    const vc = validity(x).cls, fr = vc === "soon" ? 1 : vc === "fresh" ? 0.6 : vc === "old" ? 0 : 0.3;
+    const parts = { ta, sa, slA, tr, topic, fr };
+    return { s: 0.22 * ta + 0.22 * sa + 0.2 * slA + 0.14 * tr + 0.1 * topic + 0.12 * fr, parts };
+  };
+  const scored = open.map((x) => [x.id, raw(x)]);
+  const sorted = scored.map(([, r]) => r.s).sort((a, b) => a - b), n = sorted.length;
+  const lvl = (r) => { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] < r.s) lo = m + 1; else hi = m; } const pct = n > 1 ? lo / (n - 1) : 1; return Math.max(0.06, Math.min(1, 0.6 * pct + 0.4 * Math.min(1, r.s / 0.6))); };
+  scored.forEach(([id, r]) => _int.set(id, { v: lvl(r), parts: r.parts }));
+  if (!_int.has(e.id)) { const r = raw(e); _int.set(e.id, { v: lvl(r), parts: r.parts }); }
+  return _int.get(e.id);
+}
+function intenBar(e) {
+  if (!["inbox", "queue", "listening"].includes(e.status)) return "";
+  const v = intensity(e).v, pct = Math.round(v * 100);
+  return `<div class="inten" title="Intensidade ${pct}%"><i style="width:${pct}%;opacity:${(0.45 + 0.55 * v).toFixed(2)}"></i></div>`;
+}
+function intenWhy(e) {
+  const { v, parts: p } = intensity(e), w = [];
+  if (p.sa > 0.4) w.push("programa que você ouve muito"); else if (p.ta > 0.6) w.push("tema que você mais ouve");
+  if (p.slA > 0.35) w.push("estantes do seu histórico");
+  if (p.tr > 0.6) w.push("em alta na sua Fila");
+  if (p.topic > 0) w.push("assunto que se repete");
+  if (p.fr === 1) w.push("vence logo");
+  return { label: v >= 0.75 ? "Alta" : v >= 0.45 ? "Média" : "Baixa", why: w.slice(0, 2).join(" · ") };
 }
 const _prio = new Map();
 function prio(e) {
@@ -1403,7 +1474,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-11 · 37</div>
+    <div class="hint">Versão 2026-11-12 · 38</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1645,6 +1716,43 @@ async function pushOff() {
   state.pushOn = false; state.notify = null; toast("Notificações desligadas neste aparelho"); render();
 }
 
+// ---------- Sortear: um episódio por vez, sem ver a Fila. Sorteio pesa pela intensidade ----------
+const PICK_DUR = [["", "Qualquer duração"], ["0-20", "Até 20 min"], ["20-45", "20 a 45 min"], ["45-999", "Mais de 45 min"]];
+const _pickSkip = new Set();
+function pickPool() {
+  const d = state.pickDur || "";
+  return state.episodes.filter((e) => {
+    if (!["queue", "listening"].includes(e.status)) return false;
+    if (!d) return true;
+    const [a, b] = d.split("-").map(Number), m = mins(e.duration_sec) ?? 0; return m >= a && m < b;
+  });
+}
+function drawPick(pool) {
+  let p = pool.filter((e) => !_pickSkip.has(e.id) && e.id !== state.pickId);
+  if (!p.length) { _pickSkip.clear(); p = pool.filter((e) => e.id !== state.pickId); }
+  if (!p.length) p = pool;
+  const w = p.map((e) => 0.04 + intensity(e).v ** 2), tot = w.reduce((a, b) => a + b, 0);
+  let r = Math.random() * tot, i = 0; while (i < p.length - 1 && (r -= w[i]) > 0) i++;
+  state.pickId = p[i].id; LS.set("pickId", state.pickId);
+  return p[i];
+}
+function viewPick() {
+  const d = state.pickDur || "";
+  $("#filterbar").innerHTML = `<div class="filters">${PICK_DUR.map(([v, l]) => `<button class="chip small ${d === v ? "on" : ""}" data-pickdur="${v}">${l}</button>`).join("")}</div>`;
+  const pool = pickPool();
+  setSub(pool.length ? `Sorteio entre ${pool.length.toLocaleString("pt-BR")} episódios da Fila` : "Um episódio por vez");
+  if (!pool.length) return empty(I.list, "Nada pra sortear", d ? "Nenhum episódio da Fila com essa duração." : "Sua Fila está vazia.", d ? `<button class="btn" data-pickdur="">Qualquer duração</button>` : "");
+  state._queueClusters ||= clusters(state.episodes.filter((e) => e.status === "queue" || e.status === "listening"));
+  const e = pool.find((x) => x.id === state.pickId) || drawPick(pool);
+  const dn = state.dense; state.dense = false; const html = card(e, "queue"); state.dense = dn;
+  const iw = intenWhy(e);
+  return `<div class="pick-wrap">
+    ${html}
+    <div class="pick-go"><button class="btn primary" data-act="pick-again">${I.shuffle || ""}Sortear outro</button></div>
+    <div class="hint" style="text-align:center">Intensidade ${iw.label.toLowerCase()}${iw.why ? " · " + esc(iw.why) : ""}.<br>O sorteio favorece os episódios mais a sua cara, mas qualquer um pode sair.</div>
+  </div>`;
+}
+
 function viewSettings() {
   $("#filterbar").innerHTML = "";
   setSub("Programas, integrações e acesso");
@@ -1653,6 +1761,7 @@ function viewSettings() {
   const fol = state.shows.filter((s) => s.follow).sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
   const folShown = state.showAllShows ? fol : fol.slice(0, Math.max(8, fol.filter((s) => s.favorite).length));
   return `<div class="grid">
+  <button class="archive-link glass" data-go="watch" style="grid-column:1/-1"><svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3h4.6l.7 3M9 18l.7 3h4.6l.7-3M12 9.5V12l1.5 1.5"/></svg><span><b>Watch e Natação</b><br><small>Listas Hoje, Corrida, Longão, Notícias e Natação</small></span>${I.chev}</button>
   ${autoPanel()}
   ${notifyPanel()}
   <div class="panel" style="grid-column:1/-1">
@@ -1689,8 +1798,8 @@ function setSub(t) { $("#h-sub").textContent = t; }
 function render() {
   if (ILHA) return renderIlha(true);
   if (state.ep) renderEp();
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === (state.tab === "archive" ? "queue" : state.tab)));
-  const titles = { inbox: "Inbox", queue: "Fila", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === ({ archive: "queue", watch: "settings" }[state.tab] || state.tab)));
+  const titles = { inbox: "Inbox", queue: "Fila", pick: "Sortear", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
   $("#h-title").textContent = titles[state.tab];
   const nInbox = state.episodes.filter((e) => e.status === "inbox").length;
   $("#cnt-inbox").innerHTML = nInbox ? `<span class="dot">${nInbox > 99 ? "99+" : nInbox}</span>` : "";
@@ -1702,7 +1811,7 @@ function render() {
       : `<div class="empty"><p>Carregando seus episódios…</p></div>`;
     return;
   }
-  $("#main").innerHTML = ({ inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, settings: viewSettings, archive: viewArchive, search: viewSearch }[state.tab] || viewQueue)();
+  $("#main").innerHTML = ({ inbox: viewInbox, queue: viewQueue, done: viewDone, watch: viewWatch, pick: viewPick, settings: viewSettings, archive: viewArchive, search: viewSearch }[state.tab] || viewQueue)();
   $("#main").querySelectorAll(".grid").forEach((g) => g.classList.toggle("densegrid", state.dense));
   const db = $("#btn-dense"); db.innerHTML = state.dense ? I.expand : I.compact; db.title = state.dense ? "Visão normal" : "Visão compacta";
   db.style.display = ["queue", "inbox", "archive"].includes(state.tab) ? "" : "none";
@@ -1744,6 +1853,7 @@ function epSheet(e) {
       ${topicOf(e) ? jp("topic", topicOf(e), `Assunto: ${esc(topicOf(e))}`, "pill reason") : ""}
       ${(e.guests || []).slice(0, 3).map((g) => `<button class="pill guest jump" data-jump="guest" data-v="${esc(g)}">${I.person}${esc(g)}</button>`).join("")}
     </div>
+    ${["inbox", "queue"].includes(mode) ? (() => { const iw = intenWhy(e); return `<div class="es-int"><span>Intensidade ${iw.label.toLowerCase()}</span>${intenBar(e)}</div>${iw.why ? `<div class="hint" style="margin:-6px 0 12px">${esc(iw.why)}</div>` : ""}`; })() : ""}
     ${mode === "queue" && prio(e).why.length ? `<div class="why" style="margin-bottom:10px">${esc(prio(e).why.join(" · "))}</div>` : ""}
     <div class="desc">${e.description === undefined ? "Carregando…" : esc(e.description || "Sem descrição.")}</div>
     ${lists ? `<div class="es-sec"><div class="es-lbl">Listas do Watch</div><div class="wrap">${lists}</div></div>` : ""}
@@ -1772,11 +1882,58 @@ async function openEp(id) {
   if (e.description === undefined) { const d = await api(`/episodes/${id}`).catch(() => ({})); e.description = d.description || ""; if (state.ep === id) renderEp(); }
 }
 function closeEp() { state.ep = null; const el = $("#esheet"); el.classList.remove("show"); el.dataset.id = ""; if (!$("#fsheet").classList.contains("show") && !$("#sheet").classList.contains("show")) $("#scrim").classList.remove("show"); }
-document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && state.ep) closeEp(); });
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { if ($("#asheet").classList.contains("show")) return closeActions(); if (state.ep) closeEp(); } });
+// ---------- tocar e segurar num episódio: menu de ações rápidas ----------
+function openActions(id) {
+  const e = state.episodes.find((x) => x.id === id) || EPS.get(id); if (!e) return;
+  closeEp(); closeFilters();
+  const mode = epMode(e), isYT = e.platform === "youtube" || /youtu\.?be/.test(e.url || "");
+  const link = isYT ? (e.url || e.apple_url) : appleLink(e);
+  const it = (act, icon, label, cls = "") => `<button class="act-i ${cls}" data-act="${act}" data-id="${e.id}">${icon}<span>${label}</span></button>`;
+  const ln = link ? `<a class="act-i" href="${esc(link)}" target="_blank" rel="noopener" data-ep-link="${e.id}">${I.ext}<span>${isYT ? "Abrir no YouTube" : "Abrir no Podcasts"}</span></a>` : "";
+  const play = !isYT && mode !== "done" ? (IS_MAC ? `<a class="act-i" href="filailha://play#id=${e.id}">${I.play}<span>Ouvir na ilha</span></a>` : it("play", I.play, "Ouvir aqui")) : "";
+  const lists = !isYT && (e.audio_url || e.platform === "apple") && ["queue", "inbox"].includes(mode)
+    ? state.lists.map((l) => { const on = inList(l.slug, e.id); return `<button class="act-i" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}<span>${on ? "Tirar de" : "Mandar pra"} ${esc(l.title.replace(/^.*?Fila · /, ""))}</span></button>`; }).join("") : "";
+  const sep = `<div class="as-sep"></div>`;
+  const rows = {
+    queue: [it("done", I.check, "Ouvi"), ln, play, sep, lists, sep, it("ep-open", I.list, "Ver detalhes"), it("archive", I.archive, "Arquivar", "warn"), it("dismiss", I.x, "Descartar", "warn")],
+    inbox: [it("keep", I.check, "Manter na Fila"), ln, play, sep, lists, sep, it("ep-open", I.list, "Ver detalhes"), it("dismiss", I.x, "Descartar", "warn")],
+    done: [e.notion_page_id ? `<a class="act-i" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank" rel="noopener">${I.ext}<span>Abrir no Notion</span></a>` : it("notion", I.ext, "Enviar pro Notion"), ln, it("ep-open", I.list, "Ver detalhes")],
+    archive: [it("restore", I.restore, "Restaurar"), it("done", I.check, "Ouvi"), ln, it("ep-open", I.list, "Ver detalhes")],
+  }[mode];
+  $("#asheet").innerHTML = `<div class="es-grab" style="margin-top:0"></div><div class="as-h"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${fmtDur(e.duration_sec)}</div></div>${rows.join("")}`;
+  $("#asheet").classList.add("show"); $("#scrim").classList.add("show");
+}
+function closeActions() {
+  $("#asheet").classList.remove("show");
+  if (!state.ep && !$("#fsheet").classList.contains("show") && !$("#sheet").classList.contains("show")) $("#scrim").classList.remove("show");
+}
+// toque numa opção: a ação roda pelo fluxo normal e o menu fecha
+$("#asheet").addEventListener("click", (ev) => {
+  const b = ev.target.closest(".act-i"); if (!b) return;
+  const l = b.dataset.epLink; if (l) { markOpened(l); setTimeout(render, 300); }
+  setTimeout(closeActions, 0);
+});
+(() => {
+  let t = null, sx = 0, sy = 0, fired = false;
+  document.addEventListener("touchstart", (ev) => {
+    fired = false; clearTimeout(t); t = null;
+    const c = ev.target.closest(".card[data-ep]");
+    if (!c || ev.touches.length > 1 || ev.target.closest("select,input,textarea") || c.closest("#asheet")) return;
+    sx = ev.touches[0].clientX; sy = ev.touches[0].clientY;
+    t = setTimeout(() => { t = null; fired = true; navigator.vibrate?.(12); openActions(c.dataset.ep); }, 480);
+  }, { passive: true });
+  document.addEventListener("touchmove", (ev) => { if (t && Math.hypot(ev.touches[0].clientX - sx, ev.touches[0].clientY - sy) > 10) { clearTimeout(t); t = null; } }, { passive: true });
+  document.addEventListener("touchend", (ev) => { clearTimeout(t); t = null; if (fired && ev.cancelable) ev.preventDefault(); }, { passive: false });
+  // depois do toque longo, o "clique" que o sistema manda ao soltar não pode abrir o episódio
+  document.addEventListener("click", (ev) => { if (fired) { fired = false; if (ev.target.closest(".card[data-ep]")) { ev.preventDefault(); ev.stopPropagation(); } } }, true);
+  // Mac: clique com o botão direito abre o mesmo menu
+  document.addEventListener("contextmenu", (ev) => { const c = ev.target.closest(".card[data-ep]"); if (!c) return; ev.preventDefault(); openActions(c.dataset.ep); });
+})();
 // Arrastar pra baixo fecha qualquer folha (episódio, filtros, mandar episódio).
 // Começa pelo topo da folha, ou em qualquer lugar quando a rolagem de dentro já está no início.
 (() => {
-  const closeOf = { esheet: () => closeEp(), fsheet: () => closeFilters(), sheet: () => openSheet(false) };
+  const closeOf = { asheet: () => closeActions(), esheet: () => closeEp(), fsheet: () => closeFilters(), sheet: () => openSheet(false) };
   let d = null;
   document.addEventListener("touchstart", (ev) => {
     const sh = ev.target.closest(".sheet.show"); if (!sh || ev.touches.length !== 1) return;
@@ -1811,7 +1968,7 @@ function openSheet(show) {
   if (show) setTimeout(() => $("#add-url").focus(), 250); else $("#add-url").blur();
 }
 $("#btn-add").onclick = () => openSheet(true);
-$("#scrim").onclick = () => { closeEp(); openSheet(false); };
+$("#scrim").onclick = () => { closeActions(); closeEp(); openSheet(false); };
 $("#sheet-cancel").onclick = () => openSheet(false);
 $("#sheet-paste").onclick = async () => { try { $("#add-url").value = await navigator.clipboard.readText(); } catch { toast("Cole com toque longo no campo"); } };
 $("#sheet-send").onclick = async () => {
@@ -1834,6 +1991,8 @@ async function act(el) {
     if (a === "ep-close") return closeEp();
     if (["done", "keep", "dismiss", "archive", "restore", "play"].includes(a) && state.ep === id) closeEp();
     if (a === "toggle") return openEp(id);
+    if (a === "ep-open") { closeActions(); return openEp(id); }
+    if (a === "pick-again") { if (state.pickId) _pickSkip.add(state.pickId); drawPick(pickPool()); window.scrollTo(0, 0); return render(); }
     if (a === "toggle-old") {
       state.open[id] = !state.open[id]; render();
       const e = state.episodes.find((x) => x.id === id);
@@ -2009,6 +2168,8 @@ async function act(el) {
 document.addEventListener("click", (ev) => {
   const ap = ev.target.closest('a[href*="podcasts.apple.com"],a[href*="youtu"]');
   if (ap) { const id = ap.closest("[data-ep]")?.dataset.ep || (ap.closest("#esheet") ? state.ep : null); if (id) { markOpened(id); setTimeout(render, 300); } return; }
+  const pd = ev.target.closest("[data-pickdur]");
+  if (pd) { state.pickDur = pd.dataset.pickdur; LS.set("pickDur", state.pickDur); state.pickId = null; _pickSkip.clear(); return render(); }
   const go = ev.target.closest("[data-go]");
   if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
   const jb = ev.target.closest("[data-jump]");
