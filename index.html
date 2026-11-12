@@ -520,6 +520,7 @@ async function load(opts = {}) {
         Object.assign(state, { episodes: eps, lists, shows, config, stats, loaded: true, loadError: null, fromSnap: null });
         _lastLoad = Date.now(); render();
         snapWrite({ episodes: eps, lists, shows, config, stats, at: new Date().toISOString() });
+        resolveAppleIds();
         return;
       } catch (e) {
         if (state.needToken) return;
@@ -1450,12 +1451,27 @@ function ilhaCmd(c, v) {
   }
 }
 function appleLink(e) {
-  return epLink(e) || `https://podcasts.apple.com/br/search?term=${encodeURIComponent(`${e.show_title || ""} ${e.title}`.trim())}`;
+  // sem o ID do episódio: abre a página do programa (o episódio novo fica no topo), não uma busca
+  return epLink(e) || (e.show_id ? `https://podcasts.apple.com/br/podcast/id${e.show_id}` : `https://podcasts.apple.com/br/search?term=${encodeURIComponent(`${e.show_title || ""} ${e.title}`.trim())}`);
+}
+// episódios do RSS chegam sem o ID da Apple: o servidor descobre pelo guid e o link passa a abrir o episódio
+let _resolving = false;
+async function resolveAppleIds() {
+  if (_resolving) return;
+  const ids = state.episodes.filter((e) => !e.apple_id && e.show_id && ["inbox", "queue", "listening"].includes(e.status) && e.platform !== "youtube").map((e) => e.id).slice(0, 100);
+  if (!ids.length) return;
+  _resolving = true;
+  try {
+    const r = await api("/apple/resolve", { ids });
+    for (const [id, tid] of Object.entries(r.found || {})) { const e = state.episodes.find((x) => x.id === id); if (e) { e.apple_id = tid; e.apple_url = `https://podcasts.apple.com/br/podcast/id${e.show_id}?i=${tid}`; } }
+    if (r.linked) { render(); snapWrite({ episodes: state.episodes, lists: state.lists, shows: state.shows, config: state.config, stats: state.stats, at: new Date().toISOString() }); }
+  } catch (_) { /* tenta de novo na próxima abertura */ }
+  _resolving = false;
 }
 function dayActions(e) {
   const yt = platformOf(e) === "youtube";
   return `<div class="day-x">
-    <a class="btn small" href="${esc(appleLink(e))}" target="_blank" rel="noopener">${I.play}${yt ? "Abrir no YouTube" : epLink(e) ? "Abrir no Podcasts" : "Buscar no Podcasts"}</a>
+    <a class="btn small" href="${esc(appleLink(e))}" target="_blank" rel="noopener">${I.play}${yt ? "Abrir no YouTube" : epLink(e) || e.show_id ? "Abrir no Podcasts" : "Buscar no Podcasts"}</a>
     ${yt ? "" : `<button class="btn small" data-act="play" data-id="${e.id}">${I.play}Ouvir aqui</button>`}
     ${IS_MAC && !yt ? `<a class="btn small" href="filailha://play#id=${e.id}">${I.play}Na ilha</a>` : ""}
   </div>`;
@@ -1482,7 +1498,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-12 · 39</div>
+    <div class="hint">Versão 2026-11-12 · 40</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
