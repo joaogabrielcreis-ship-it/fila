@@ -333,6 +333,14 @@ details summary::-webkit-details-marker{display:none}
 .es-body{overflow-y:auto;padding:2px 18px 14px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
 .es-body .desc{font-size:15px;line-height:1.5;color:var(--ink2);white-space:pre-line}
 .es-sec{margin-top:16px}
+.tr-box{margin-top:4px}
+.tr-q{width:100%;margin:0 0 10px}
+.tr-seg{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:6px 0;font-size:15px;line-height:1.5}
+.tr-seg .tt{font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;padding-top:3px;background:none;border:0;text-align:left;cursor:pointer;font-family:inherit}
+.tr-seg.nt{grid-template-columns:1fr}
+.tr-seg .sp{display:block;font-size:12px;font-weight:700;color:var(--muted)}
+.tr-seg mark{background:var(--accent-soft);color:inherit;border-radius:3px}
+.tr-src{font-size:12px;color:var(--muted);margin-top:8px}
 .es-lbl{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .es-foot{flex:none;padding:12px 16px 16px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .es-foot .grow{flex:1}
@@ -1474,7 +1482,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-12 · 38</div>
+    <div class="hint">Versão 2026-11-12 · 39</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1822,6 +1830,43 @@ function render() {
 // ---------- add sheet ----------
 function closeFilters() { $("#fsheet").classList.remove("show"); $("#scrim").classList.remove("show"); }
 // ---------- detalhe do episódio: folha de baixo (em vez de expandir o card) ----------
+// ---------- transcrição: do RSS do programa ou feita no Mac (Fila Ilha) ----------
+const TR = new Map(); // id → {state, segments, source, open, q, all}
+const fmtT = (t) => { t = Math.max(0, Math.floor(t)); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), x = t % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
+function trHtml(e) {
+  const r = TR.get(e.id);
+  if (!r) return `<button class="btn small" data-act="tr-load" data-id="${e.id}">Ver transcrição</button>`;
+  if (r.loading) return `<div class="hint" style="margin:0">Procurando transcrição…</div>`;
+  if (r.state !== "ready") {
+    const msg = { requested: "Na fila do Mac. Fica pronta alguns minutos depois que o Fila Ilha pegar (com o Mac ligado).", working: "O Mac está transcrevendo agora…", failed: "O Mac não conseguiu transcrever este episódio." }[r.state];
+    return `${msg ? `<div class="hint" style="margin:0 0 8px">${msg}</div>` : `<div class="hint" style="margin:0 0 8px">O programa não publica transcrição deste episódio.</div>`}
+      ${["requested", "working"].includes(r.state) ? `<button class="btn small" data-act="tr-load" data-id="${e.id}">Atualizar</button>` : `<button class="btn small" data-act="tr-ask" data-id="${e.id}">Transcrever no Mac</button>`}`;
+  }
+  const q = (r.q || "").trim().toLowerCase();
+  const segs = q ? r.segments.filter((g) => g.x.toLowerCase().includes(q)) : r.segments;
+  const shown = r.all || q ? segs : segs.slice(0, 14);
+  const hl = (x) => { const t = esc(x); if (!q) return t; const i = x.toLowerCase().indexOf(q); return i < 0 ? t : esc(x.slice(0, i)) + "<mark>" + esc(x.slice(i, i + q.length)) + "</mark>" + esc(x.slice(i + q.length)); };
+  let lastSp = "";
+  return `<input class="chip tr-q" type="search" placeholder="Buscar na transcrição" value="${esc(r.q || "")}" data-trq="${e.id}">
+    ${shown.map((g) => { const sp = g.s && g.s !== lastSp ? (lastSp = g.s) : ""; return g.t >= 0
+      ? `<div class="tr-seg"><button class="tt" data-act="tr-seek" data-id="${e.id}" data-t="${g.t}">${fmtT(g.t)}</button><div>${sp ? `<span class="sp">${esc(sp)}</span>` : ""}${hl(g.x)}</div></div>`
+      : `<div class="tr-seg nt"><div>${hl(g.x)}</div></div>`; }).join("") || `<div class="hint">Nada encontrado.</div>`}
+    ${!q && !r.all && segs.length > shown.length ? `<button class="btn small" data-act="tr-all" data-id="${e.id}">Mostrar tudo (${segs.length} trechos)</button>` : ""}
+    <div class="tr-src">${r.source === "mac" ? "Transcrito no seu Mac (pode ter erros)" : "Transcrição publicada pelo programa"}${r.segments.some((g) => g.t >= 0) ? " · toque no tempo pra ouvir dali" : ""}</div>`;
+}
+function trPaint(id) { const b = $("#tr-box"); const e = state.episodes.find((x) => x.id === id) || EPS.get(id); if (b && e && state.ep === id) b.innerHTML = trHtml(e); }
+async function trLoad(id) {
+  const old = TR.get(id); TR.set(id, { ...(old || {}), loading: true }); trPaint(id);
+  try { const r = await api(`/episodes/${id}/transcript`); TR.set(id, { ...r, loading: false }); }
+  catch (err) { TR.delete(id); toast("Não consegui buscar a transcrição"); }
+  trPaint(id);
+}
+document.addEventListener("input", (ev) => {
+  const i = ev.target.closest("[data-trq]"); if (!i) return;
+  const r = TR.get(i.dataset.trq); if (!r) return; r.q = i.value;
+  const pos = i.selectionStart; trPaint(i.dataset.trq);
+  const n = $(`[data-trq="${i.dataset.trq}"]`); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (_) {} }
+});
 function epMode(e) { return e.status === "inbox" ? "inbox" : e.status === "done" ? "done" : ["archived", "dismissed"].includes(e.status) ? "archive" : "queue"; }
 function epSheet(e) {
   const mode = epMode(e), v = validity(e), isYT = e.platform === "youtube" || /youtu\.?be/.test(e.url || "");
@@ -1856,6 +1901,7 @@ function epSheet(e) {
     ${["inbox", "queue"].includes(mode) ? (() => { const iw = intenWhy(e); return `<div class="es-int"><span>Intensidade ${iw.label.toLowerCase()}</span>${intenBar(e)}</div>${iw.why ? `<div class="hint" style="margin:-6px 0 12px">${esc(iw.why)}</div>` : ""}`; })() : ""}
     ${mode === "queue" && prio(e).why.length ? `<div class="why" style="margin-bottom:10px">${esc(prio(e).why.join(" · "))}</div>` : ""}
     <div class="desc">${e.description === undefined ? "Carregando…" : esc(e.description || "Sem descrição.")}</div>
+    <div class="es-sec"><div class="es-lbl">Transcrição</div><div class="tr-box" id="tr-box">${trHtml(e)}</div></div>
     ${lists ? `<div class="es-sec"><div class="es-lbl">Listas do Watch</div><div class="wrap">${lists}</div></div>` : ""}
     <div class="es-sec"><div class="es-lbl">Validade</div><div class="wrap">${["news", "tech", "evergreen"].map((k) => `<button class="chip ${e.kind === k ? "on" : ""}" data-act="kind" data-kind="${k}" data-id="${e.id}">${KIND_LABEL[k]}</button>`).join("")}</div></div>
     <div class="es-sec"><div class="es-lbl">Tema</div><select class="chip" data-act="theme" data-id="${e.id}">${(state.config.themes || []).map((t) => `<option ${t === e.theme ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
@@ -1992,6 +2038,15 @@ async function act(el) {
     if (["done", "keep", "dismiss", "archive", "restore", "play"].includes(a) && state.ep === id) closeEp();
     if (a === "toggle") return openEp(id);
     if (a === "ep-open") { closeActions(); return openEp(id); }
+    if (a === "tr-load") return trLoad(id);
+    if (a === "tr-all") { const r = TR.get(id); if (r) r.all = true; return trPaint(id); }
+    if (a === "tr-ask") { await api(`/episodes/${id}/transcript`, { request: true }); TR.set(id, { state: "requested" }); trPaint(id); return toast("Pedido ao Mac"); }
+    if (a === "tr-seek") {
+      const t = Number(el.dataset.t) || 0, e = state.episodes.find((x) => x.id === id) || EPS.get(id);
+      if (player.ep?.id === id && player.audio) { player.audio.currentTime = t; player.audio.play?.(); return toast("Tocando de " + fmtT(t)); }
+      if (e && e.audio_url && !IS_MAC) { LS.set(`pos:${id}`, Math.floor(t)); LS.set(`posAt:${id}`, Date.now()); closeEp(); return playHere(e); }
+      return toast(fmtT(t));
+    }
     if (a === "pick-again") { if (state.pickId) _pickSkip.add(state.pickId); drawPick(pickPool()); window.scrollTo(0, 0); return render(); }
     if (a === "toggle-old") {
       state.open[id] = !state.open[id]; render();
