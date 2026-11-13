@@ -171,12 +171,14 @@ img.loaded{background:none!important}
 .day-h{display:flex;justify-content:space-between;align-items:flex-start}
 .day-h .gt{font-size:22px;font-weight:700}
 .day .li .t{cursor:pointer}
-.lstrip-h{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 2px 6px}
-.lstrip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:2px 16px}
-.lstrip::-webkit-scrollbar{display:none}
-.lchip{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:10px 14px;border-radius:16px;cursor:pointer;color:var(--ink);text-align:left;font-size:15px}
+.lstrip-h{display:flex;justify-content:space-between;align-items:baseline;margin:0 4px 8px}
+.lstrip-h span{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.lstrip-h button{border:0;background:none;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:0}
+.lstrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin:0 0 16px}
+.lchip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:11px 12px;border-radius:16px;cursor:pointer;color:var(--ink);text-align:left;font:inherit;background:var(--card);border:.5px solid var(--glass-edge);box-shadow:none}
+.lchip b{font-size:15px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lchip small{color:var(--muted);font-size:12.5px;white-space:nowrap}
-.lchip.more b{color:var(--accent)}
+.lchip.off b{color:var(--muted);font-weight:600}
 .archive-link{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 4px;padding:14px 16px;border-radius:20px;text-align:left;cursor:pointer;color:var(--ink);font-size:16px}
 .archive-link span{flex:1}
 .archive-link small{color:var(--muted);font-size:13px}
@@ -1154,12 +1156,12 @@ function viewExplore(all) {
 function listsStrip() {
   if (!state.lists?.length) return "";
   const byId = Object.fromEntries(state.episodes.map((e) => [e.id, e]));
-  return `<div class="lstrip-h">Minhas listas</div><div class="lstrip">${state.lists.map((l) => {
+  return `<div class="lstrip-h"><span>Minhas listas</span><button data-go="watch">Ver e mudar</button></div><div class="lstrip">${state.lists.map((l) => {
     const items = (l.fila_list_items || []).map((i) => byId[i.episode_id]).filter((e) => e && e.status !== "done");
     const sec = items.reduce((s, e) => s + (e.duration_sec || 0), 0);
     const name = l.title.replace(/^.*?Fila · /, "");
-    return `<button class="lchip glass" data-go="watch" data-slug="${l.slug}"><b>${esc(name)}</b><small>${items.length ? `${items.length} ep · ${fmtDur(sec)}` : "vazia"}</small></button>`;
-  }).join("")}<button class="lchip glass more" data-go="watch"><b>Ver todas</b><small>e mudar</small></button></div>`;
+    return `<button class="lchip ${items.length ? "" : "off"}" data-go="watch" data-slug="${l.slug}"><b>${esc(name.replace(/ frescas$/i, ""))}</b><small>${items.length ? `${items.length} ep · ${fmtDur(sec)}` : "vazia"}</small></button>`;
+  }).join("")}</div>`;
 }
 function viewQueue() { return listsStrip() + viewQueueBody(); }
 function viewQueueBody() {
@@ -1518,7 +1520,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-13 · 42</div>
+    <div class="hint">Versão 2026-11-13 · 43</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
