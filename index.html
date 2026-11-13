@@ -262,6 +262,14 @@ select.chip.time{height:30px;font-size:13px;padding:0 24px 0 10px}
 .li img{width:52px;height:52px;border-radius:11px;object-fit:cover;background:var(--fill)}
 .num{width:26px;text-align:center;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .player{position:fixed;z-index:29;left:50%;transform:translateX(-50%);bottom:calc(max(14px, env(safe-area-inset-bottom) - 6px) + 76px);width:min(calc(100% - 20px),560px);border-radius:22px;padding:10px 10px 10px 10px;display:flex;align-items:center;gap:10px;overflow:hidden}
+.day-min{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;cursor:pointer}
+.day-min .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.day-min .t b{font-size:17px}.day-min .t small{color:var(--muted);font-size:13.5px}
+.day-arts{display:flex;flex:none}
+.day-arts img{width:40px;height:40px;border-radius:10px;object-fit:cover;background:var(--fill);border:2px solid var(--card);margin-left:-16px}
+.day-arts img:first-child{margin-left:0}
+.day-chev svg.i{transform:rotate(90deg);color:var(--muted);width:18px;height:18px}
+.day-up svg.i{transform:rotate(-90deg)}
 .day-card{margin:0 0 10px}.day-card .card{margin:0}
 .day-x{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 10px 34px}
 .player img{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--fill)}
@@ -1502,15 +1510,23 @@ function dayPanel(d) {
   const t = LS.get("dayTarget", 90);
   const opts = [[30, "30 min"], [60, "1h"], [90, "1h30"], [120, "2h"], [180, "3h"]];
   const inHoje = d.eps.length && d.eps.every((e) => inList("hoje", e.id));
+  const sub = `${d.eps.length} episódio${d.eps.length === 1 ? "" : "s"} · ${fmtLong(d.total)}`;
+  // fechado por padrão: uma linha só; toque pra abrir a seleção
+  if (!LS.get("dayExp", false)) return `<div class="day glass day-min" data-act="day-exp" role="button" aria-label="Abrir o Seu dia">
+    <div class="day-arts">${d.eps.slice(0, 3).map((e) => `<img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">`).join("")}</div>
+    <div class="t"><b>Seu dia</b><small>${sub}</small></div>
+    ${IS_MAC ? `<a class="round small accent" href="filailha://day" aria-label="Ouvir na ilha" onclick="event.stopPropagation()">${I.play}</a>` : `<button class="round small accent" data-act="play-seq" aria-label="Ouvir o Seu dia">${I.play}</button>`}
+    <span class="day-chev">${I.chev}</span>
+  </div>`;
   return `<div class="day glass">
     <div class="day-h"><div><div class="gt">Seu dia</div><div class="sub">${d.eps.length} episódio${d.eps.length === 1 ? "" : "s"} · ${fmtLong(d.total)} · ${d.themes} tema${d.themes === 1 ? "" : "s"}</div></div>
-      <button class="round small glass" data-act="day-reroll" aria-label="Montar outra">${I.restore}</button></div>
+      <div style="display:flex;gap:6px"><button class="round small glass" data-act="day-reroll" aria-label="Montar outra">${I.restore}</button><button class="round small glass day-up" data-act="day-exp" aria-label="Fechar o Seu dia">${I.chev}</button></div></div>
     <div class="filters" style="margin:0;padding:8px 0 4px">${opts.map(([v, l]) => `<button class="chip small ${t === v ? "on" : ""}" data-daytarget="${v}">${l}</button>`).join("")}</div>
     <div class="day-list">${d.eps.map((e, i) => `<div class="li" data-ep="${e.id}">
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
       ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>${state.dayOpen === e.id ? `<div class="day-card">${card(e, "queue")}</div>` : ""}`).join("")}</div>
-    <div class="row">${IS_MAC ? `<a class="btn" href="filailha://day">${I.play}Na ilha</a>` : `<button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button>`}<button class="btn ${inHoje ? "on" : "primary"}" style="flex:1" data-act="day-send">${inHoje ? `${I.check}No Watch (Fila · Hoje)` : `${I.watch}Mandar pro Watch`}</button></div>
+    <div class="row">${IS_MAC ? `<a class="btn" href="filailha://day">${I.play}Na ilha</a>` : `<button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button>`}</div><div class="hint" style="margin-top:6px">A lista Hoje do Watch se monta sozinha toda manhã; não precisa mandar.</div>
   </div>`;
 }
 
@@ -1520,7 +1536,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-13 · 43</div>
+    <div class="hint">Versão 2026-11-13 · 44</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -2152,6 +2168,7 @@ async function act(el) {
     if (a === "open-add") return openSheet(true);
     if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "", shelf: "", topic: "", platform: "", guest: "" }; LS.set("filters", state.f); return render(); }
     if (a === "day-swap") { const k = `daySkip:${today()}`; LS.set(k, [...LS.get(k, []), id]); return render(); }
+    if (a === "day-exp") { LS.set("dayExp", !LS.get("dayExp", false)); return render(); }
     if (a === "day-reroll") {
       const k = `daySkip:${today()}`; const cur = dayPlan(state.episodes.filter((e) => e.status === "queue" || e.status === "listening")).eps.map((e) => e.id);
       LS.set(k, [...LS.get(k, []), ...cur]); return render();
