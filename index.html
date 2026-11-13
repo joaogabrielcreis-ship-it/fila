@@ -171,6 +171,12 @@ img.loaded{background:none!important}
 .day-h{display:flex;justify-content:space-between;align-items:flex-start}
 .day-h .gt{font-size:22px;font-weight:700}
 .day .li .t{cursor:pointer}
+.lstrip-h{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 2px 6px}
+.lstrip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:2px 16px}
+.lstrip::-webkit-scrollbar{display:none}
+.lchip{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:10px 14px;border-radius:16px;cursor:pointer;color:var(--ink);text-align:left;font-size:15px}
+.lchip small{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.lchip.more b{color:var(--accent)}
 .archive-link{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 4px;padding:14px 16px;border-radius:20px;text-align:left;cursor:pointer;color:var(--ink);font-size:16px}
 .archive-link span{flex:1}
 .archive-link small{color:var(--muted);font-size:13px}
@@ -1144,7 +1150,19 @@ function viewExplore(all) {
   <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">Programas ${sortSeg("showSort")}</div><div class="wrap">${cut("show", shows, 16).map(([id, eps]) => chip("show", id, eps[0].show_title, eps.length)).join("")}${more("show", shows, 16)}</div>`;
 }
 
-function viewQueue() {
+// Minhas listas no topo da Fila: nome, quantos episódios e quanto tempo; toque pra ver e mudar
+function listsStrip() {
+  if (!state.lists?.length) return "";
+  const byId = Object.fromEntries(state.episodes.map((e) => [e.id, e]));
+  return `<div class="lstrip-h">Minhas listas</div><div class="lstrip">${state.lists.map((l) => {
+    const items = (l.fila_list_items || []).map((i) => byId[i.episode_id]).filter((e) => e && e.status !== "done");
+    const sec = items.reduce((s, e) => s + (e.duration_sec || 0), 0);
+    const name = l.title.replace(/^.*?Fila · /, "");
+    return `<button class="lchip glass" data-go="watch" data-slug="${l.slug}"><b>${esc(name)}</b><small>${items.length ? `${items.length} ep · ${fmtDur(sec)}` : "vazia"}</small></button>`;
+  }).join("")}<button class="lchip glass more" data-go="watch"><b>Ver todas</b><small>e mudar</small></button></div>`;
+}
+function viewQueue() { return listsStrip() + viewQueueBody(); }
+function viewQueueBody() {
   const all = state.episodes.filter((e) => e.status === "queue" || e.status === "listening");
   _prio.clear();
   state._queueClusters = clusters(all);
@@ -1500,7 +1518,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-13 · 41</div>
+    <div class="hint">Versão 2026-11-13 · 42</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1604,14 +1622,14 @@ function autoListRow(slug) {
 function viewWatch() {
   if (!state.autoLists) loadAutoLists();
   $("#filterbar").innerHTML = "";
-  setSub("Cada lista vira um programa no Apple Podcasts");
+  setSub("Corrida, Natação, Hoje… · ↑ muda a ordem · ✕ tira da lista");
   const byId = Object.fromEntries(state.episodes.map((e) => [e.id, e]));
   return `<div class="grid">` + state.lists.map((l) => {
     const items = (l.fila_list_items || []).sort((a, b) => a.position - b.position).map((i) => byId[i.episode_id]).filter((e) => e && e.status !== "done");
     const total = items.reduce((s, e) => s + (mins(e.duration_sec) || 0), 0);
     const feed = `${API}/feed/${l.slug}.xml?t=${LS.get("token", "")}`;
     const name = l.title.replace(/^.*?Fila · /, "");
-    return `<div class="panel">
+    return `<div class="panel" id="list-${l.slug}" style="scroll-margin-top:16px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
         <h3>${esc(name)}</h3><span class="sub">${items.length} · ${total ? fmtDur(total * 60) : "vazia"}</span>
       </div>
@@ -1787,7 +1805,7 @@ function viewSettings() {
   const fol = state.shows.filter((s) => s.follow).sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
   const folShown = state.showAllShows ? fol : fol.slice(0, Math.max(8, fol.filter((s) => s.favorite).length));
   return `<div class="grid">
-  <button class="archive-link glass" data-go="watch" style="grid-column:1/-1"><svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3h4.6l.7 3M9 18l.7 3h4.6l.7-3M12 9.5V12l1.5 1.5"/></svg><span><b>Watch e Natação</b><br><small>Listas Hoje, Corrida, Longão, Notícias e Natação</small></span>${I.chev}</button>
+  <button class="archive-link glass" data-go="watch" style="grid-column:1/-1"><svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3h4.6l.7 3M9 18l.7 3h4.6l.7-3M12 9.5V12l1.5 1.5"/></svg><span><b>Minhas listas</b><br><small>Hoje, Corrida, Longão, Notícias e Natação (também no topo da Fila)</small></span>${I.chev}</button>
   ${autoPanel()}
   ${notifyPanel()}
   <div class="panel" style="grid-column:1/-1">
@@ -1824,8 +1842,8 @@ function setSub(t) { $("#h-sub").textContent = t; }
 function render() {
   if (ILHA) return renderIlha(true);
   if (state.ep) renderEp();
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === ({ archive: "queue", watch: "settings" }[state.tab] || state.tab)));
-  const titles = { inbox: "Inbox", queue: "Fila", pick: "Sortear", watch: "Watch", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === ({ archive: "queue", watch: "queue" }[state.tab] || state.tab)));
+  const titles = { inbox: "Inbox", queue: "Fila", pick: "Sortear", watch: "Minhas listas", done: "Ouvidos", settings: "Ajustes", archive: "Arquivo", search: "Buscar" };
   $("#h-title").textContent = titles[state.tab];
   const nInbox = state.episodes.filter((e) => e.status === "inbox").length;
   $("#cnt-inbox").innerHTML = nInbox ? `<span class="dot">${nInbox > 99 ? "99+" : nInbox}</span>` : "";
@@ -2246,7 +2264,7 @@ document.addEventListener("click", (ev) => {
   const pd = ev.target.closest("[data-pickdur]");
   if (pd) { state.pickDur = pd.dataset.pickdur; LS.set("pickDur", state.pickDur); state.pickId = null; _pickSkip.clear(); return render(); }
   const go = ev.target.closest("[data-go]");
-  if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); return render(); }
+  if (go) { state.tab = go.dataset.go; LS.set("tab", state.tab); window.scrollTo(0, 0); render(); if (go.dataset.slug) setTimeout(() => document.getElementById("list-" + go.dataset.slug)?.scrollIntoView({ block: "start", behavior: "smooth" }), 60); return; }
   const jb = ev.target.closest("[data-jump]");
   if (jb) { ev.preventDefault(); return jump(jb.dataset.jump, jb.dataset.v); }
   const t = ev.target.closest("[data-act]");
