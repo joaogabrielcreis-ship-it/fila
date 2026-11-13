@@ -1230,7 +1230,7 @@ function viewQueueBody() {
 // ---------- Seu dia: seleção curada e equilibrada ----------
 // Regras: continua o que está pela metade; no máx. 1 por programa e 1 por assunto; no máx. 2 por tema;
 // mistura durações (1 longo no máx., pelo menos 1 curto); para perto do tempo-alvo. Muda a cada dia.
-const recentListening = (e) => e.status === "listening" && (!e.apple_played_at || Date.now() - new Date(e.apple_played_at) < 30 * DAY);
+const recentListening = (e) => e.status === "listening" && !e.resume_skip && (!e.apple_played_at || Date.now() - new Date(e.apple_played_at) < 30 * DAY);
 const today = () => new Date().toISOString().slice(0, 10);
 function daySeed(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296); }
 function dayPlan(all, tMin) {
@@ -1525,7 +1525,7 @@ function dayPanel(d) {
     <div class="day-list">${d.eps.map((e, i) => `<div class="li" data-ep="${e.id}">
       <span class="num">${i + 1}</span><img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t" data-act="toggle-day" data-id="${e.id}"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title || "")} · ${e.playhead_sec ? progress(e) : fmtDur(e.duration_sec)} · ${esc(e.theme || "")}</div></div>
-      ${playBtn(e)}<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button></div>${state.dayOpen === e.id ? `<div class="day-card">${card(e, "queue")}</div>` : ""}`).join("")}</div>
+      ${playBtn(e)}${recentListening(e) ? `<button class="mini" data-act="no-resume" data-id="${e.id}" aria-label="Não continuar este">${I.x}</button>` : `<button class="mini" data-act="day-swap" data-id="${e.id}" aria-label="Trocar este">${I.x}</button>`}</div>${state.dayOpen === e.id ? `<div class="day-card">${card(e, "queue")}</div>` : ""}`).join("")}</div>
     <div class="row">${IS_MAC ? `<a class="btn" href="filailha://day">${I.play}Na ilha</a>` : `<button class="btn" data-act="play-seq">${I.play}Ouvir aqui</button>`}</div><div class="hint" style="margin-top:6px">A lista Hoje do Watch se monta sozinha toda manhã; não precisa mandar.</div>
   </div>`;
 }
@@ -1536,7 +1536,7 @@ function viewConnect() {
   return `<div class="panel">
     <h3>Conectar este app</h3>
     <div class="hint">O app instalado na Tela de Início não enxerga o que o Safari guardou. Cole o token de acesso uma vez e pronto.</div>
-    <div class="hint">Versão 2026-11-13 · 44</div>
+    <div class="hint">Versão 2026-11-13 · 45</div>
     <div class="row"><input type="password" id="token" placeholder="Token de acesso" autocomplete="off"></div>
     <div class="row"><button class="btn" data-act="paste-token">Colar</button><div style="flex:1"></div><button class="btn primary" data-act="save-token">Conectar</button></div>
   </div>`;
@@ -1658,7 +1658,7 @@ function viewWatch() {
         <img src="${esc(e.artwork || "")}" alt="" onerror="this.style.visibility='hidden'">
         <div class="t"><div class="a">${esc(e.title)}</div><div class="b">${esc(e.show_title)} · ${fmtDur(e.duration_sec)}</div></div>
         <button class="mini" aria-label="Subir" data-act="move" data-op="up" data-slug="${l.slug}" data-id="${e.id}" ${i === 0 ? "disabled" : ""}>${I.up}</button>
-        <button class="mini" aria-label="Remover" data-act="move" data-op="remove" data-slug="${l.slug}" data-id="${e.id}">${I.x}</button>
+        ${l.slug === "hoje" && recentListening(e) ? `<button class="mini" aria-label="Não continuar" data-act="no-resume" data-id="${e.id}">${I.x}</button>` : `<button class="mini" aria-label="Remover" data-act="move" data-op="remove" data-slug="${l.slug}" data-id="${e.id}">${I.x}</button>`}
       </div>`).join("") || `<div class="hint">Vazia. Na Fila, toque em “+ ${esc(name)}” nos episódios que quer levar.</div>`}
       </div>
       ${l.slug === "natacao" ? natPanel(total) : `<details><summary>Assinar no Apple Podcasts</summary>
@@ -1996,7 +1996,7 @@ function openActions(id) {
     ? state.lists.map((l) => { const on = inList(l.slug, e.id); return `<button class="act-i" data-act="list" data-slug="${l.slug}" data-id="${e.id}">${on ? I.check : I.plus}<span>${on ? "Tirar de" : "Mandar pra"} ${esc(l.title.replace(/^.*?Fila · /, ""))}</span></button>`; }).join("") : "";
   const sep = `<div class="as-sep"></div>`;
   const rows = {
-    queue: [it("done", I.check, "Ouvi"), ln, play, sep, lists, sep, it("ep-open", I.list, "Ver detalhes"), it("archive", I.archive, "Arquivar", "warn"), it("dismiss", I.x, "Descartar", "warn")],
+    queue: [it("done", I.check, "Ouvi"), ln, play, recentListening(e) ? it("no-resume", I.x, "Não continuar (tirar das listas)") : "", sep, lists, sep, it("ep-open", I.list, "Ver detalhes"), it("archive", I.archive, "Arquivar", "warn"), it("dismiss", I.x, "Descartar", "warn")],
     inbox: [it("keep", I.check, "Manter na Fila"), ln, play, sep, lists, sep, it("ep-open", I.list, "Ver detalhes"), it("dismiss", I.x, "Descartar", "warn")],
     done: [e.notion_page_id ? `<a class="act-i" href="https://www.notion.so/${e.notion_page_id.replace(/-/g, "")}" target="_blank" rel="noopener">${I.ext}<span>Abrir no Notion</span></a>` : it("notion", I.ext, "Enviar pro Notion"), ln, it("ep-open", I.list, "Ver detalhes")],
     archive: [it("restore", I.restore, "Restaurar"), it("done", I.check, "Ouvi"), ln, it("ep-open", I.list, "Ver detalhes")],
@@ -2167,6 +2167,12 @@ async function act(el) {
     if (a === "more-group") { state.groupOpen = { ...(state.groupOpen || {}), [el.dataset.g]: true }; return render(); }
     if (a === "open-add") return openSheet(true);
     if (a === "clear-filters") { state.f = { theme: "", dur: "", show: "", age: "", sort: state.f.sort, lang: "", shelf: "", topic: "", platform: "", guest: "" }; LS.set("filters", state.f); return render(); }
+    if (a === "no-resume") {
+      patchLocal(id, { resume_skip: true });
+      const h = state.lists.find((x) => x.slug === "hoje"); if (h) h.fila_list_items = (h.fila_list_items || []).filter((i) => i.episode_id !== id);
+      render(); await api(`/episodes/${id}`, { resume_skip: true });
+      return toast("Não volta mais pra continuar. Segue na Fila; ouvindo de novo, volta.");
+    }
     if (a === "day-swap") { const k = `daySkip:${today()}`; LS.set(k, [...LS.get(k, []), id]); return render(); }
     if (a === "day-exp") { LS.set("dayExp", !LS.get("dayExp", false)); return render(); }
     if (a === "day-reroll") {
